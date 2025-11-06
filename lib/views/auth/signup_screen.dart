@@ -21,8 +21,14 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   final _doctorNumberController = TextEditingController();
+  final _phoneController = TextEditingController();
+  final _ageController = TextEditingController();
+  final _clinicAddressController = TextEditingController();
+  final _consultationFeeController = TextEditingController();
   bool _isPasswordVisible = false;
   String _selectedRole = 'patient';
+  String? _selectedGender;
+  String? _selectedSpecialty;
   Uint8List? _idProofBytes;
   String? _idProofFileName;
 
@@ -33,6 +39,10 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     _doctorNumberController.dispose();
+    _phoneController.dispose();
+    _ageController.dispose();
+    _clinicAddressController.dispose();
+    _consultationFeeController.dispose();
     super.dispose();
   }
 
@@ -42,13 +52,21 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
     });
   }
 
+  String? _validatePhone(String? value) {
+    if (value == null || value.trim().isEmpty)
+      return 'Please enter phone number';
+    if (!RegExp(r'^\d{10}$').hasMatch(value.trim())) return 'Enter 10 digits';
+    return null;
+  }
+
   Future<void> _signUp() async {
     if (_formKey.currentState!.validate()) {
       // Basic validation for doctor-specific fields
       if (_selectedRole == 'doctor') {
         if (_doctorNumberController.text.trim().isEmpty) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Please enter doctor registration number')),
+            const SnackBar(
+                content: Text('Please enter doctor registration number')),
           );
           return;
         }
@@ -65,9 +83,22 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
             password: _passwordController.text,
             name: _nameController.text.trim(),
             role: _selectedRole,
-            doctorNumber: _selectedRole == 'doctor' ? _doctorNumberController.text.trim() : null,
+            doctorNumber: _selectedRole == 'doctor'
+                ? _doctorNumberController.text.trim()
+                : null,
             idProofBytes: _selectedRole == 'doctor' ? _idProofBytes : null,
-            idProofFileName: _selectedRole == 'doctor' ? _idProofFileName : null,
+            idProofFileName:
+                _selectedRole == 'doctor' ? _idProofFileName : null,
+            phone: '+91${_phoneController.text.trim()}',
+            age: int.tryParse(_ageController.text.trim()),
+            gender: _selectedGender,
+            clinicAddress: _selectedRole == 'doctor'
+                ? _clinicAddressController.text.trim()
+                : null,
+            consultationFee: _selectedRole == 'doctor'
+                ? double.tryParse(_consultationFeeController.text.trim())
+                : null,
+            specialty: _selectedRole == 'doctor' ? _selectedSpecialty : null,
           );
 
       // Navigate to OTP verification if needed
@@ -173,6 +204,8 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                   ),
                   const SizedBox(height: 8),
 
+                  const SizedBox(height: 8),
+
                   // Doctor Registration Number (maps to license_number)
                   CustomTextField(
                     controller: _doctorNumberController,
@@ -216,10 +249,17 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                           ElevatedButton.icon(
                             onPressed: () async {
                               try {
-                                final result = await FilePicker.platform.pickFiles(
+                                final result =
+                                    await FilePicker.platform.pickFiles(
                                   type: FileType.custom,
-                                  allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png'],
-                                  withData: true, // ensures bytes available on web
+                                  allowedExtensions: [
+                                    'pdf',
+                                    'jpg',
+                                    'jpeg',
+                                    'png'
+                                  ],
+                                  withData:
+                                      true, // ensures bytes available on web
                                 );
 
                                 if (result != null && result.files.isNotEmpty) {
@@ -231,7 +271,9 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                                 }
                               } catch (e) {
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text('Error selecting file: $e')),
+                                  SnackBar(
+                                      content:
+                                          Text('Error selecting file: $e')),
                                 );
                               }
                             },
@@ -283,6 +325,153 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
 
                 const SizedBox(height: 16),
 
+                // Phone with +91 (below Name & Email)
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 16),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey.shade400),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Text('+91', style: TextStyle(fontSize: 16)),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: CustomTextField(
+                        controller: _phoneController,
+                        labelText: 'Phone Number',
+                        hintText: '10-digit mobile number',
+                        keyboardType: TextInputType.phone,
+                        validator: _validatePhone,
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 16),
+
+                // Age (numeric text field)
+                CustomTextField(
+                  controller: _ageController,
+                  labelText: 'Age',
+                  hintText: 'Enter age (18-100)',
+                  prefixIcon: Icons.calendar_today,
+                  keyboardType: TextInputType.number,
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Please enter age';
+                    }
+                    final age = int.tryParse(value.trim());
+                    if (age == null) {
+                      return 'Enter a valid number';
+                    }
+                    if (age < 18 || age > 100) {
+                      return 'Age must be between 18 and 100';
+                    }
+                    return null;
+                  },
+                ),
+
+                const SizedBox(height: 16),
+
+                // Gender dropdown
+                DropdownButtonFormField<String>(
+                  value: _selectedGender,
+                  decoration: const InputDecoration(
+                    labelText: 'Gender',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.person),
+                  ),
+                  items: ['Male', 'Female', 'Other']
+                      .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                      .toList(),
+                  onChanged: (val) => setState(() => _selectedGender = val),
+                  validator: (val) =>
+                      val == null ? 'Please select gender' : null,
+                ),
+
+                const SizedBox(height: 16),
+
+                // Doctor-only details (placed below reg. number, ID proof, name & email)
+                if (_selectedRole == 'doctor') ...[
+                  // Specialty dropdown
+                  DropdownButtonFormField<String>(
+                    value: _selectedSpecialty,
+                    decoration: const InputDecoration(
+                      labelText: 'Specialty',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.healing),
+                    ),
+                    items: [
+                      'General Physician',
+                      'Cardiologist',
+                      'Dermatologist',
+                      'Neurologist',
+                      'Pediatrician',
+                      'Gynecologist',
+                      'Orthopedist',
+                      'Psychiatrist',
+                      'Ophthalmologist',
+                      'ENT',
+                      'Urologist',
+                      'Dentist',
+                      'Other'
+                    ]
+                        .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                        .toList(),
+                    onChanged: (val) =>
+                        setState(() => _selectedSpecialty = val),
+                    validator: (val) =>
+                        val == null ? 'Please select specialty' : null,
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // Clinic Address
+                  CustomTextField(
+                    controller: _clinicAddressController,
+                    labelText: 'Clinic Address',
+                    hintText: 'Full clinic address',
+                    prefixIcon: Icons.location_on_outlined,
+                    maxLines: 2,
+                    validator: (value) {
+                      if (_selectedRole == 'doctor') {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Please enter clinic address';
+                        }
+                      }
+                      return null;
+                    },
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // Consultation Fee
+                  CustomTextField(
+                    controller: _consultationFeeController,
+                    labelText: 'Consultation Fee (₹)',
+                    hintText: 'e.g. 500',
+                    prefixIcon: Icons.currency_rupee,
+                    keyboardType: TextInputType.number,
+                    validator: (value) {
+                      if (_selectedRole == 'doctor') {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Please enter consultation fee';
+                        }
+                        if (double.tryParse(value.trim()) == null) {
+                          return 'Enter a valid number';
+                        }
+                      }
+                      return null;
+                    },
+                  ),
+                ],
+
+                const SizedBox(height: 16),
+
                 // Password Field
                 CustomTextField(
                   controller: _passwordController,
@@ -304,6 +493,19 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                     }
                     if (value.length < 6) {
                       return 'Password must be at least 6 characters';
+                    }
+                    if (!RegExp(r'(?=.*[a-z])').hasMatch(value)) {
+                      return 'Password must contain a lowercase letter';
+                    }
+                    if (!RegExp(r'(?=.*[A-Z])').hasMatch(value)) {
+                      return 'Password must contain an uppercase letter';
+                    }
+                    if (!RegExp(r'(?=.*\d)').hasMatch(value)) {
+                      return 'Password must contain a number';
+                    }
+                    if (!RegExp(r'(?=.*[!@#$%^&*(),.?":{}|<>])')
+                        .hasMatch(value)) {
+                      return 'Password must contain a symbol';
                     }
                     return null;
                   },

@@ -108,7 +108,12 @@ class SupabaseService {
   }
 
   Future<Map<String, dynamic>?> getUserProfile(String userId) async {
-    final data = await _client.from('users').select().eq('id', userId).single();
+    // Use maybeSingle to avoid PGRST116 when no rows exist yet
+    final data = await _client
+        .from('users')
+        .select()
+        .eq('id', userId)
+        .maybeSingle();
 
     return data;
   }

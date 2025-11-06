@@ -87,9 +87,14 @@ class AuthNotifier extends StateNotifier<AuthState> {
     required String name,
     required String role,
     String? phone,
+    int? age,
+    String? gender,
     String? doctorNumber,
     Uint8List? idProofBytes,
     String? idProofFileName,
+    String? clinicAddress,
+    double? consultationFee,
+    String? specialty,
   }) async {
     state = state.copyWith(isLoading: true, error: null);
 
@@ -119,11 +124,13 @@ class AuthNotifier extends StateNotifier<AuthState> {
             name: name,
             email: email,
             phone: phone,
+            age: age,
+            gender: gender,
             licenseNumber: doctorNumber,
-            consultationFee: null,
-            clinicAddress: null,
+            consultationFee: consultationFee,
+            clinicAddress: clinicAddress,
+            specialty: specialty,
             qualifications: null,
-            specialty: null,
             idProofUrl: idProofUrl,
           );
 
