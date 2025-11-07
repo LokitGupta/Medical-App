@@ -88,7 +88,7 @@ class PatientHomeScreen extends ConsumerWidget {
               title: const Text('Medications'),
               onTap: () {
                 Navigator.pop(context);
-                context.go('/medications');
+                context.go('/medication-reminders');
               },
             ),
             ListTile(
@@ -218,7 +218,7 @@ class PatientHomeScreen extends ConsumerWidget {
                   'My Medications',
                   Icons.medication,
                   Colors.orange,
-                  () => context.go('/medications'),
+                  () => context.go('/medication-reminders'),
                 ),
                 _buildActionCard(
                   context,
@@ -232,7 +232,7 @@ class PatientHomeScreen extends ConsumerWidget {
                   'Emergency',
                   Icons.emergency,
                   Colors.red,
-                  () => context.go('/emergency'),
+                  () => context.go('/help'),
                 ),
               ],
             ),

@@ -94,7 +94,9 @@ class UserModel {
       clinicAddress: json['clinic_address'] ?? json['clinicAddress'],
       consultationFee: (json['consultation_fee'] is int)
           ? (json['consultation_fee'] as int).toDouble()
-          : (json['consultation_fee'] as double?),
+          : (json['consultation_fee'] is String)
+              ? double.tryParse(json['consultation_fee'])
+              : (json['consultation_fee'] as double?),
       doctorVerificationStatus: json['doctor_verification_status'],
       idProofUrl: json['id_proof_url'],
       createdAt: DateTime.tryParse(json['created_at'] ?? '') ?? DateTime.now(),

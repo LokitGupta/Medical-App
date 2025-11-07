@@ -1,19 +1,42 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import 'package:medical_app/providers/auth_provider.dart';
+import 'package:medical_app/providers/appointment_provider.dart';
 import 'package:medical_app/widgets/custom_button.dart';
 import 'package:medical_app/widgets/notification_badge.dart';
 
-class DoctorHomeScreen extends ConsumerWidget {
+class DoctorHomeScreen extends ConsumerStatefulWidget {
   const DoctorHomeScreen({Key? key}) : super(key: key);
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DoctorHomeScreen> createState() => _DoctorHomeScreenState();
+}
+
+class _DoctorHomeScreenState extends ConsumerState<DoctorHomeScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final authState = ref.read(authProvider);
+      final user = authState.user;
+      if (user != null) {
+        ref.read(appointmentProvider.notifier).getAppointments(user.id, true);
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
     final user = authState.user;
     final String verificationStatus = (user?.doctorVerificationStatus ?? 'pending').toLowerCase();
     final bool isApproved = verificationStatus == 'approved';
+    final appointmentState = ref.watch(appointmentProvider);
+    final pendingAppointments = appointmentState.appointments
+        .where((a) => a.status == 'pending')
+        .toList();
 
     return Scaffold(
       appBar: AppBar(
@@ -242,65 +265,40 @@ class DoctorHomeScreen extends ConsumerWidget {
               ],
             ),
             const SizedBox(height: 8),
-            _buildPendingAppointment(
-              context,
-              'John Smith',
-              'Chest Pain, Shortness of Breath',
-              'Today, 10:00 AM',
-              () => context.go('/appointments/1'),
-            ),
-            const SizedBox(height: 8),
-            _buildPendingAppointment(
-              context,
-              'Emily Johnson',
-              'Annual Checkup',
-              'Today, 11:30 AM',
-              () => context.go('/appointments/2'),
-            ),
-            const SizedBox(height: 8),
-            _buildPendingAppointment(
-              context,
-              'Michael Brown',
-              'Follow-up Consultation',
-              'Today, 2:00 PM',
-              () => context.go('/appointments/3'),
-            ),
+            if (appointmentState.isLoading)
+              const Center(child: CircularProgressIndicator())
+            else if (pendingAppointments.isEmpty)
+              const Text(
+                'No pending appointments',
+                style: TextStyle(color: Colors.grey),
+              )
+            else
+              Column(
+                children: List.generate(
+                  pendingAppointments.length,
+                  (index) {
+                    final appt = pendingAppointments[index];
+                    final dateFormat = DateFormat('MMM dd, yyyy');
+                    final timeFormat = DateFormat('hh:mm a');
+                    final dateTime =
+                        '${dateFormat.format(appt.startTime)}, ${timeFormat.format(appt.startTime)}';
+                    final patientName = appt.patientName ?? 'Patient';
+                    final reason = appt.notes ?? 'Appointment';
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 8.0),
+                      child: _buildPendingAppointment(
+                        context,
+                        patientName,
+                        reason,
+                        dateTime,
+                        () => context.go('/appointments/${appt.id}'),
+                      ),
+                    );
+                  },
+                ),
+              ),
 
             const SizedBox(height: 24),
-
-            // Recent Patients
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Recent Patients',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                TextButton(
-                  onPressed: () {},
-                  child: const Text('See All'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            _buildRecentPatientCard(
-              context,
-              'Sarah Williams',
-              'Last Visit: 2 days ago',
-              'Hypertension, Diabetes',
-              () {},
-            ),
-            const SizedBox(height: 8),
-            _buildRecentPatientCard(
-              context,
-              'Robert Davis',
-              'Last Visit: 5 days ago',
-              'Asthma',
-              () {},
-            ),
           ],
         ),
       ),

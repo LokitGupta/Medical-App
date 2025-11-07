@@ -101,10 +101,8 @@ class AppointmentModel {
       'doctor_name': doctorName,
       'doctor_specialty': doctorSpecialty,
       'status': status,
-      'start_time': startTime.toIso8601String(),
-      'end_time': endTime.toIso8601String(),
+      'created_at': startTime.toIso8601String(),
       'notes': notes,
-      'fee': fee,
     };
   }
 }

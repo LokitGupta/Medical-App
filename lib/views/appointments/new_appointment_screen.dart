@@ -74,14 +74,43 @@ class _NewAppointmentScreenState extends ConsumerState<NewAppointmentScreen> {
     if (picked != null && picked != _selectedDate) {
       setState(() {
         _selectedDate = picked;
+        // If time was selected and now falls in the past for the new date, clear it
+        if (_selectedTime != null) {
+          final now = DateTime.now();
+          final candidate = DateTime(
+            picked.year,
+            picked.month,
+            picked.day,
+            _selectedTime!.hour,
+            _selectedTime!.minute,
+          );
+          if (candidate.isBefore(now)) {
+            _selectedTime = null;
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content:
+                    Text('Selected time is in the past. Please choose again.'),
+              ),
+            );
+          }
+        }
       });
     }
   }
 
   Future<void> _selectTime(BuildContext context) async {
+    // Prefer current time as initial when date is today to discourage past times
+    final now = DateTime.now();
+    final bool isToday = _selectedDate != null &&
+        _selectedDate!.year == now.year &&
+        _selectedDate!.month == now.month &&
+        _selectedDate!.day == now.day;
+    final TimeOfDay initial = _selectedTime ??
+        (isToday ? TimeOfDay(hour: now.hour, minute: now.minute) : TimeOfDay.now());
+
     final TimeOfDay? picked = await showTimePicker(
       context: context,
-      initialTime: _selectedTime ?? TimeOfDay.now(),
+      initialTime: initial,
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
@@ -93,7 +122,25 @@ class _NewAppointmentScreenState extends ConsumerState<NewAppointmentScreen> {
         );
       },
     );
-    if (picked != null && picked != _selectedTime) {
+    if (picked != null) {
+      // If date is selected and chosen time is in the past, block it
+      if (_selectedDate != null) {
+        final candidate = DateTime(
+          _selectedDate!.year,
+          _selectedDate!.month,
+          _selectedDate!.day,
+          picked.hour,
+          picked.minute,
+        );
+        if (candidate.isBefore(now)) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Please select a time in the future'),
+            ),
+          );
+          return;
+        }
+      }
       setState(() {
         _selectedTime = picked;
       });
@@ -132,6 +179,16 @@ class _NewAppointmentScreenState extends ConsumerState<NewAppointmentScreen> {
         _selectedTime!.minute,
       );
 
+      // Block booking in the past
+      if (!startTime.isAfter(DateTime.now())) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Appointment time must be in the future'),
+          ),
+        );
+        return;
+      }
+
       // End time (30 minutes after start)
       final endTime = startTime.add(const Duration(minutes: 30));
 
@@ -142,7 +199,13 @@ class _NewAppointmentScreenState extends ConsumerState<NewAppointmentScreen> {
         startTime: startTime,
         endTime: endTime,
         notes: _reasonController.text,
-        fee: _selectedDoctor!['consultation_fee'] ?? 0,
+        fee: (() {
+          final raw = _selectedDoctor!['consultation_fee'];
+          if (raw is double) return raw;
+          if (raw is int) return raw.toDouble();
+          if (raw is String) return double.tryParse(raw) ?? 0.0;
+          return 0.0;
+        })(),
       );
 
       final success = await ref
@@ -154,6 +217,12 @@ class _NewAppointmentScreenState extends ConsumerState<NewAppointmentScreen> {
           const SnackBar(content: Text('Appointment booked successfully')),
         );
         context.go('/appointments');
+      } else if (mounted) {
+        final error = ref.read(appointmentProvider).error ??
+            'Failed to book appointment. Please try again.';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(error)),
+        );
       }
     } else {
       ScaffoldMessenger.of(context).showSnackBar(

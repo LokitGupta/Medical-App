@@ -236,6 +236,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/medication-reminders',
         builder: (context, state) => const MedicationRemindersScreen(),
       ),
+      // Alias for historical navigation path
+      GoRoute(
+        path: '/medications',
+        builder: (context, state) => const MedicationRemindersScreen(),
+      ),
 
       // Payment routes
       GoRoute(

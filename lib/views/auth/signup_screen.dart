@@ -31,6 +31,21 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
   String? _selectedSpecialty;
   Uint8List? _idProofBytes;
   String? _idProofFileName;
+  // Consistent specialties list for doctor signup
+  final List<String> _specialties = const [
+    'Cardiology',
+    'Dermatology',
+    'Endocrinology',
+    'Gastroenterology',
+    'Neurology',
+    'Obstetrics & Gynecology',
+    'Ophthalmology',
+    'Orthopedics',
+    'Pediatrics',
+    'Psychiatry',
+    'Pulmonology',
+    'Urology',
+  ];
 
   @override
   void dispose() {
@@ -356,6 +371,123 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                   ],
                 ),
                 const SizedBox(height: 16),
+
+                // --- Age & Gender (Shown for both Patient and Doctor) ---
+                Row(
+                  children: [
+                    Expanded(
+                      child: CustomTextField(
+                        controller: _ageController,
+                        labelText: 'Age',
+                        hintText: 'Enter your age',
+                        keyboardType: TextInputType.number,
+                        validator: (value) {
+                          if (value != null && value.trim().isNotEmpty) {
+                            final parsed = int.tryParse(value.trim());
+                            if (parsed == null || parsed <= 0 || parsed > 120) {
+                              return 'Enter a valid age';
+                            }
+                          }
+                          return null;
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        decoration: InputDecoration(
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                          labelText: 'Gender',
+                        ),
+                        value: _selectedGender,
+                        items: const [
+                          DropdownMenuItem(value: 'Male', child: Text('Male')),
+                          DropdownMenuItem(value: 'Female', child: Text('Female')),
+                          DropdownMenuItem(value: 'Other', child: Text('Other')),
+                          DropdownMenuItem(value: 'Prefer not to say', child: Text('Prefer not to say')),
+                        ],
+                        onChanged: (val) => setState(() => _selectedGender = val),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please select gender';
+                          }
+                          return null;
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                // --- Doctor-only fields below identification and common fields ---
+                if (_selectedRole == 'doctor') ...[
+                  DropdownButtonFormField<String>(
+                    decoration: InputDecoration(
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                      labelText: 'Specialty',
+                    ),
+                    value: _selectedSpecialty,
+                    hint: const Text('Select your specialty'),
+                    items: _specialties
+                        .map((s) => DropdownMenuItem(value: s, child: Text(s)))
+                        .toList(),
+                    onChanged: (val) => setState(() => _selectedSpecialty = val),
+                    validator: (value) {
+                      if (_selectedRole == 'doctor' &&
+                          (value == null || value.isEmpty)) {
+                        return 'Please select a specialty';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  CustomTextField(
+                    controller: _clinicAddressController,
+                    labelText: 'Clinic Address',
+                    hintText: 'Enter your clinic address',
+                    prefixIcon: Icons.location_on_outlined,
+                    validator: (value) {
+                      if (_selectedRole == 'doctor' &&
+                          (value == null || value.trim().isEmpty)) {
+                        return 'Please enter clinic address';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  CustomTextField(
+                    controller: _consultationFeeController,
+                    labelText: 'Consultation Fee (₹)',
+                    hintText: 'Enter your consultation fee',
+                    keyboardType: TextInputType.number,
+                    prefixIcon: Icons.currency_rupee,
+                    validator: (value) {
+                      if (_selectedRole == 'doctor') {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Please enter consultation fee';
+                        }
+                        final fee = double.tryParse(value.trim());
+                        if (fee == null || fee < 0) {
+                          return 'Enter a valid amount';
+                        }
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                ],
 
                 CustomTextField(
                   controller: _passwordController,

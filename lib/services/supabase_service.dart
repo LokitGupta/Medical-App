@@ -87,12 +87,15 @@ class SupabaseService {
       'phone': phone,
     };
 
-    if (role == 'patient') {
-      data.addAll({
-        'age': age,
-        'gender': gender,
-      });
-    } else if (role == 'doctor') {
+    // Store age & gender for both patients and doctors when provided
+    if (age != null) {
+      data['age'] = age;
+    }
+    if (gender != null) {
+      data['gender'] = gender;
+    }
+
+    if (role == 'doctor') {
       data.addAll({
         'specialty': specialty,
         'qualifications': qualifications,
@@ -122,12 +125,15 @@ class SupabaseService {
       'phone': updatedUser.phone,
     };
 
-    if (updatedUser.role == 'patient') {
-      data.addAll({
-        'age': updatedUser.age,
-        'gender': updatedUser.gender,
-      });
-    } else if (updatedUser.role == 'doctor') {
+    // Persist age & gender updates for both roles when provided
+    if (updatedUser.age != null) {
+      data['age'] = updatedUser.age;
+    }
+    if (updatedUser.gender != null) {
+      data['gender'] = updatedUser.gender;
+    }
+
+    if (updatedUser.role == 'doctor') {
       data.addAll({
         'specialty': updatedUser.specialty,
         'qualifications': updatedUser.qualifications,
@@ -148,18 +154,29 @@ class SupabaseService {
     final String fieldName = role == 'doctor' ? 'doctor_id' : 'patient_id';
 
     try {
-      final data = await _client
+      // Prefer explicit FK joins to ensure names are returned even if implicit
+      // relationships are not discovered by PostgREST
+      final dataUsersFk = await _client
           .from('appointments')
           .select(
-              '*, doctor:doctor_id(name, specialty), patient:patient_id(name)')
+              '*, doctor:users!appointments_doctor_id_fkey(name, specialty), patient:users!appointments_patient_id_fkey(name)')
           .eq(fieldName, userId);
-
-      return List<Map<String, dynamic>>.from(data);
+      return List<Map<String, dynamic>>.from(dataUsersFk);
     } on PostgrestException catch (_) {
-      // Fallback: select all columns without specifying names to avoid schema mismatch errors
-      final data =
-          await _client.from('appointments').select().eq(fieldName, userId);
-      return List<Map<String, dynamic>>.from(data);
+      try {
+        // Alternate schema: patient_id/doctor_id reference separate tables like `patients`
+        final dataPatientsFk = await _client
+            .from('appointments')
+            .select(
+                '*, doctor:users!appointments_doctor_id_fkey(name, specialty), patient:patients!appointments_patient_id_fkey(name)')
+            .eq(fieldName, userId);
+        return List<Map<String, dynamic>>.from(dataPatientsFk);
+      } on PostgrestException catch (_) {
+        // Fallback: select all columns without specifying names to avoid schema mismatch errors
+        final data =
+            await _client.from('appointments').select().eq(fieldName, userId);
+        return List<Map<String, dynamic>>.from(data);
+      }
     }
   }
 
@@ -168,16 +185,25 @@ class SupabaseService {
     required String doctorId,
     required String startTime,
     required String endTime,
-    required double fee,
+    required dynamic fee,
     String? notes,
   }) async {
+    // Normalize fee to double to avoid runtime type errors from string values
+    final double normalizedFee = () {
+      if (fee is double) return fee as double;
+      if (fee is int) return (fee as int).toDouble();
+      if (fee is String) return double.tryParse(fee as String) ?? 0.0;
+      return 0.0;
+    }();
+    // Derive date-only value for schemas that require an appointment_date column
+    final String appointmentDate = startTime.split('T').first;
+
     await _client.from('appointments').insert({
       'patient_id': patientId,
       'doctor_id': doctorId,
-      'start_time': startTime,
-      'end_time': endTime,
+      'created_at': startTime,
+      'appointment_date': appointmentDate,
       'status': 'pending',
-      'fee': fee,
       'notes': notes,
     });
   }
@@ -227,21 +253,31 @@ class SupabaseService {
 
   Future<Map<String, dynamic>?> getAppointmentById(String appointmentId) async {
     try {
-      final data = await _client
+      final dataUsersFk = await _client
           .from('appointments')
           .select(
-              '*, doctor:doctor_id(name, specialty), patient:patient_id(name)')
+              '*, doctor:users!appointments_doctor_id_fkey(name, specialty), patient:users!appointments_patient_id_fkey(name)')
           .eq('id', appointmentId)
           .maybeSingle();
-      return data;
+      return dataUsersFk;
     } on PostgrestException catch (_) {
-      // Fallback: select all columns without specifying names
-      final data = await _client
-          .from('appointments')
-          .select()
-          .eq('id', appointmentId)
-          .maybeSingle();
-      return data;
+      try {
+        final dataPatientsFk = await _client
+            .from('appointments')
+            .select(
+                '*, doctor:users!appointments_doctor_id_fkey(name, specialty), patient:patients!appointments_patient_id_fkey(name)')
+            .eq('id', appointmentId)
+            .maybeSingle();
+        return dataPatientsFk;
+      } on PostgrestException catch (_) {
+        // Fallback: select all columns without specifying names
+        final data = await _client
+            .from('appointments')
+            .select()
+            .eq('id', appointmentId)
+            .maybeSingle();
+        return data;
+      }
     }
   }
 
