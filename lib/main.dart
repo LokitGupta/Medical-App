@@ -18,7 +18,8 @@ void main() async {
   // Initialize Supabase
   await Supabase.initialize(
     url: 'https://tavrkrbwrisozmueultj.supabase.co',
-    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRhdnJrcmJ3cmlzb3ptdWV1bHRqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIwNzg3OTUsImV4cCI6MjA3NzY1NDc5NX0._KeimHNHSjOw-LHejt2pvrDrh6h-N-9p7FR7LOBJKTw',
+    anonKey:
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRhdnJrcmJ3cmlzb3ptdWV1bHRqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIwNzg3OTUsImV4cCI6MjA3NzY1NDc5NX0._KeimHNHSjOw-LHejt2pvrDrh6h-N-9p7FR7LOBJKTw',
   );
 
   // Initialize notifications
@@ -46,7 +47,7 @@ class MedicalApp extends ConsumerWidget {
     final languageState = ref.watch(languageProvider);
 
     return MaterialApp.router(
-      title: 'Medical App',
+      title: 'CareBridge',
       locale: languageState.locale,
       localizationsDelegates: [
         app_localizations.AppLocalizations.delegate,
@@ -56,11 +57,35 @@ class MedicalApp extends ConsumerWidget {
       ],
       supportedLocales: app_localizations.AppLocalizations.supportedLocales,
       theme: ThemeData(
-        primarySwatch: Colors.blue,
-        primaryColor: const Color(0xFF1976D2),
+        primarySwatch: Colors.indigo, // Matches dark blue tone
+        primaryColor: const Color(0xFF0D47A1), // Deep Dark Blue
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF1976D2),
-          secondary: const Color(0xFF03A9F4),
+          seedColor: const Color(0xFF0D47A1), // Core brand color
+          secondary: const Color(0xFF1565C0), // Slightly lighter blue
+        ),
+        textTheme: const TextTheme(
+          headlineLarge: TextStyle(
+            fontFamily: 'Roboto',
+            fontSize: 32,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF0D47A1), // Dark Blue for main titles
+          ),
+          headlineMedium: TextStyle(
+            fontFamily: 'Roboto',
+            fontSize: 28,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF0D47A1),
+          ),
+          bodyMedium: TextStyle(
+            fontFamily: 'Roboto',
+            fontSize: 16,
+            color: Colors.black87,
+          ),
+          labelLarge: TextStyle(
+            fontFamily: 'Roboto',
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF0D47A1),
+          ),
         ),
         fontFamily: 'Roboto',
         useMaterial3: true,

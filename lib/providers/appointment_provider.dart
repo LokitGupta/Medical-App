@@ -47,7 +47,8 @@ class AppointmentNotifier extends StateNotifier<AppointmentState> {
     try {
       final role = isDoctor ? 'doctor' : 'patient';
       final data = await _supabaseService.getAppointments(userId, role);
-      final appointments = data.map((json) => AppointmentModel.fromJson(json)).toList();
+      final appointments =
+          data.map((json) => AppointmentModel.fromJson(json)).toList();
       state = state.copyWith(appointments: appointments, isLoading: false);
     } catch (e) {
       state = state.copyWith(error: e.toString(), isLoading: false);
@@ -76,7 +77,8 @@ class AppointmentNotifier extends StateNotifier<AppointmentState> {
   }
 
   // Update appointment status
-  Future<bool> updateAppointmentStatus(String appointmentId, String status) async {
+  Future<bool> updateAppointmentStatus(
+      String appointmentId, String status) async {
     state = state.copyWith(isLoading: true, error: null);
     try {
       await _supabaseService.updateAppointmentStatus(appointmentId, status);
@@ -86,7 +88,8 @@ class AppointmentNotifier extends StateNotifier<AppointmentState> {
         }
         return a;
       }).toList();
-      state = state.copyWith(appointments: updatedAppointments, isLoading: false);
+      state =
+          state.copyWith(appointments: updatedAppointments, isLoading: false);
       return true;
     } catch (e) {
       state = state.copyWith(error: e.toString(), isLoading: false);
@@ -96,30 +99,67 @@ class AppointmentNotifier extends StateNotifier<AppointmentState> {
 
   // Get all doctors
   Future<void> getDoctors() async {
-    state = state.copyWith(isLoading: true, error: null);
+    state = state.copyWith(isDoctorsLoading: true, error: null);
     try {
       final data = await _supabaseService.getAllDoctors();
-      state = state.copyWith(doctors: data, isLoading: false);
+      state = state.copyWith(doctors: data, isDoctorsLoading: false);
     } catch (e) {
-      state = state.copyWith(error: e.toString(), isLoading: false);
+      state = state.copyWith(error: e.toString(), isDoctorsLoading: false);
     }
   }
 
   // Get doctors by specialty
   Future<void> getDoctorsBySpecialty(String specialty) async {
-    state = state.copyWith(isLoading: true, error: null);
+    state = state.copyWith(isDoctorsLoading: true, error: null);
     try {
-      final data = await _supabaseService.getDoctorsBySpecialty(specialty);
-      state = state.copyWith(doctors: data, isLoading: false);
+      var data = await _supabaseService.getDoctorsBySpecialty(specialty);
+
+      // Fallback: if server returns empty (e.g., RLS or mismatch),
+      // filter client-side from all doctors using case-insensitive contains with synonyms
+      if (data.isEmpty) {
+        final all = await _supabaseService.getAllDoctors();
+        final Map<String, List<String>> synonyms = {
+          'Cardiology': ['Cardiologist'],
+          'Dermatology': ['Dermatologist'],
+          'Endocrinology': ['Endocrinologist'],
+          'Gastroenterology': ['Gastroenterologist'],
+          'Neurology': ['Neurologist'],
+          'Ophthalmology': ['Ophthalmologist'],
+          'Orthopedics': ['Orthopedist', 'Orthopedic'],
+          'Pediatrics': ['Pediatrician'],
+          'Psychiatry': ['Psychiatrist'],
+          'Pulmonology': ['Pulmonologist'],
+          'Urology': ['Urologist'],
+          'Obstetrics & Gynecology': ['Obstetrician', 'Gynecologist'],
+        };
+        final terms = <String>{specialty.toLowerCase()};
+        final extras = synonyms[specialty] ?? [];
+        terms.addAll(extras.map((e) => e.toLowerCase()));
+
+        data = all.where((doc) {
+          final spec = (
+                doc['specialty'] ??
+                doc['specialisation'] ??
+                doc['specialization'] ??
+                doc['speciality'] ??
+                ''
+              )
+              .toString()
+              .toLowerCase();
+          return terms.any((t) => spec.contains(t));
+        }).toList();
+      }
+
+      state = state.copyWith(doctors: data, isDoctorsLoading: false);
     } catch (e) {
-      state = state.copyWith(error: e.toString(), isLoading: false);
+      state = state.copyWith(error: e.toString(), isDoctorsLoading: false);
     }
   }
 
-  // Clear error
   void clearError() {
     state = state.copyWith(error: null);
   }
+
   Future<AppointmentModel?> getAppointmentById(String appointmentId) async {
     state = state.copyWith(isLoading: true, error: null);
     try {
@@ -146,7 +186,8 @@ class AppointmentNotifier extends StateNotifier<AppointmentState> {
 }
 
 // Providers
-final appointmentProvider = StateNotifierProvider<AppointmentNotifier, AppointmentState>((ref) {
+final appointmentProvider =
+    StateNotifierProvider<AppointmentNotifier, AppointmentState>((ref) {
   final supabaseService = ref.watch(supabaseServiceProvider);
   return AppointmentNotifier(supabaseService);
 });

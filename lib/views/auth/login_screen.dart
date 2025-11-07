@@ -58,9 +58,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 // App Logo
                 Center(
                   child: Image.asset(
-                    'assets/images/logo.png',
-                    height: 100,
-                    width: 100,
+                    'assets/images/Logo.png',
+                    height: 200,
+                    width: 200,
                   ),
                 ),
 
@@ -68,10 +68,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
                 // Title
                 const Text(
-                  'Welcome Back',
+                  "Let's Begin",
                   style: TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.bold,
+                    color: Color(0xFF0D47A1), // simple, clean blue
+                    letterSpacing: 1.2,
                   ),
                   textAlign: TextAlign.center,
                 ),

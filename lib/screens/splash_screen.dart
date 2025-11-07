@@ -41,38 +41,23 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
 
   @override
   Widget build(BuildContext context) {
+    const darkBlue = Color(0xFF0D47A1);
+
     return Scaffold(
+      backgroundColor: Colors.white, // optional: set background color
       body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // App logo
-            Image.asset(
-              'assets/images/logo.png',
-              width: 150,
-              height: 150,
-              errorBuilder: (context, error, stackTrace) {
-                return const Icon(
-                  Icons.local_hospital,
-                  size: 150,
-                  color: Colors.blue,
-                );
-              },
-            ),
-            const SizedBox(height: 24),
-            // App name
-            const Text(
-              'Medical App',
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: Colors.blue,
-              ),
-            ),
-            const SizedBox(height: 48),
-            // Loading indicator
-            const CircularProgressIndicator(),
-          ],
+        child: Image.asset(
+          'assets/images/Logo.png',
+          width: 250, // adjust size as you like
+          height: 250,
+          fit: BoxFit.contain,
+          errorBuilder: (context, error, stackTrace) {
+            return const Icon(
+              Icons.local_hospital,
+              size: 150,
+              color: darkBlue,
+            );
+          },
         ),
       ),
     );

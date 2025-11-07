@@ -109,11 +109,8 @@ class SupabaseService {
 
   Future<Map<String, dynamic>?> getUserProfile(String userId) async {
     // Use maybeSingle to avoid PGRST116 when no rows exist yet
-    final data = await _client
-        .from('users')
-        .select()
-        .eq('id', userId)
-        .maybeSingle();
+    final data =
+        await _client.from('users').select().eq('id', userId).maybeSingle();
 
     return data;
   }
@@ -150,13 +147,20 @@ class SupabaseService {
       String userId, String role) async {
     final String fieldName = role == 'doctor' ? 'doctor_id' : 'patient_id';
 
-    final data = await _client
-        .from('appointments')
-        .select(
-            '*, doctor:doctor_id(name, specialty), patient:patient_id(name)')
-        .eq(fieldName, userId);
+    try {
+      final data = await _client
+          .from('appointments')
+          .select(
+              '*, doctor:doctor_id(name, specialty), patient:patient_id(name)')
+          .eq(fieldName, userId);
 
-    return List<Map<String, dynamic>>.from(data);
+      return List<Map<String, dynamic>>.from(data);
+    } on PostgrestException catch (_) {
+      // Fallback: select all columns without specifying names to avoid schema mismatch errors
+      final data =
+          await _client.from('appointments').select().eq(fieldName, userId);
+      return List<Map<String, dynamic>>.from(data);
+    }
   }
 
   Future<void> createAppointment({
@@ -188,11 +192,30 @@ class SupabaseService {
   // Doctor methods
   Future<List<Map<String, dynamic>>> getDoctorsBySpecialty(
       String specialty) async {
-    final data = await _client
-        .from('users')
-        .select()
-        .eq('role', 'doctor')
-        .eq('specialty', specialty);
+    // Build synonyms to handle differences like 'Cardiology' vs 'Cardiologist'
+    final Map<String, List<String>> synonyms = {
+      'Cardiology': ['Cardiologist'],
+      'Dermatology': ['Dermatologist'],
+      'Endocrinology': ['Endocrinologist'],
+      'Gastroenterology': ['Gastroenterologist'],
+      'Neurology': ['Neurologist'],
+      'Ophthalmology': ['Ophthalmologist'],
+      'Orthopedics': ['Orthopedist', 'Orthopedic'],
+      'Pediatrics': ['Pediatrician'],
+      'Psychiatry': ['Psychiatrist'],
+      'Pulmonology': ['Pulmonologist'],
+      'Urology': ['Urologist'],
+      'Obstetrics & Gynecology': ['Obstetrician', 'Gynecologist'],
+    };
+
+    final terms = <String>{specialty};
+    final extras = synonyms[specialty];
+    if (extras != null) terms.addAll(extras);
+
+    final orFilter = terms.map((t) => "specialty.ilike.%${t}%").join(',');
+
+    final data =
+        await _client.from('users').select().eq('role', 'doctor').or(orFilter);
 
     return List<Map<String, dynamic>>.from(data);
   }
@@ -203,12 +226,23 @@ class SupabaseService {
   }
 
   Future<Map<String, dynamic>?> getAppointmentById(String appointmentId) async {
-    final data = await _client
-        .from('appointments')
-        .select('*, doctor:doctor_id(name, specialty), patient:patient_id(name)')
-        .eq('id', appointmentId)
-        .maybeSingle();
-    return data;
+    try {
+      final data = await _client
+          .from('appointments')
+          .select(
+              '*, doctor:doctor_id(name, specialty), patient:patient_id(name)')
+          .eq('id', appointmentId)
+          .maybeSingle();
+      return data;
+    } on PostgrestException catch (_) {
+      // Fallback: select all columns without specifying names
+      final data = await _client
+          .from('appointments')
+          .select()
+          .eq('id', appointmentId)
+          .maybeSingle();
+      return data;
+    }
   }
 
   // Prescription methods
@@ -241,7 +275,8 @@ class SupabaseService {
     return List<Map<String, dynamic>>.from(data);
   }
 
-  Future<List<Map<String, dynamic>>> getDoctorPrescriptions(String doctorId) async {
+  Future<List<Map<String, dynamic>>> getDoctorPrescriptions(
+      String doctorId) async {
     final data = await _client
         .from('prescriptions')
         .select('*, appointment:appointment_id(doctor:doctor_id(name))')
@@ -249,7 +284,8 @@ class SupabaseService {
     return List<Map<String, dynamic>>.from(data);
   }
 
-  Future<Map<String, dynamic>?> getPrescriptionByAppointment(String appointmentId) async {
+  Future<Map<String, dynamic>?> getPrescriptionByAppointment(
+      String appointmentId) async {
     final data = await _client
         .from('prescriptions')
         .select('*, appointment:appointment_id(doctor:doctor_id(name))')
@@ -259,11 +295,11 @@ class SupabaseService {
     return Map<String, dynamic>.from(data);
   }
 
-  Future<void> updatePrescriptionFile(String prescriptionId, String fileUrl) async {
+  Future<void> updatePrescriptionFile(
+      String prescriptionId, String fileUrl) async {
     await _client
         .from('prescriptions')
-        .update({'file_url': fileUrl})
-        .eq('id', prescriptionId);
+        .update({'file_url': fileUrl}).eq('id', prescriptionId);
   }
 
   // Storage methods
@@ -274,23 +310,23 @@ class SupabaseService {
       // Read bytes from native file and upload as binary (works across platforms)
       final Uint8List bytes = await file.readAsBytes();
       response = await _client.storage.from(bucket).uploadBinary(
-        path,
-        bytes,
-        fileOptions: const FileOptions(
-          cacheControl: '3600',
-          upsert: false,
-        ),
-      );
+            path,
+            bytes,
+            fileOptions: const FileOptions(
+              cacheControl: '3600',
+              upsert: false,
+            ),
+          );
     } else if (file is Uint8List) {
       // Web or pre-read bytes
       response = await _client.storage.from(bucket).uploadBinary(
-        path,
-        file,
-        fileOptions: const FileOptions(
-          cacheControl: '3600',
-          upsert: false,
-        ),
-      );
+            path,
+            file,
+            fileOptions: const FileOptions(
+              cacheControl: '3600',
+              upsert: false,
+            ),
+          );
     } else {
       throw ArgumentError('Unsupported file type for upload');
     }
@@ -526,23 +562,23 @@ class SupabaseService {
         // Native platforms: we receive a file path, read bytes and upload binary
         final Uint8List bytes = await io.File(fileData).readAsBytes();
         await _client.storage.from('medical_records').uploadBinary(
-          fileKey,
-          bytes,
-          fileOptions: const FileOptions(
-            cacheControl: '3600',
-            upsert: false,
-          ),
-        );
+              fileKey,
+              bytes,
+              fileOptions: const FileOptions(
+                cacheControl: '3600',
+                upsert: false,
+              ),
+            );
       } else if (fileData is Uint8List) {
         // Web platforms: we receive binary data directly
         await _client.storage.from('medical_records').uploadBinary(
-          fileKey,
-          fileData,
-          fileOptions: const FileOptions(
-            cacheControl: '3600',
-            upsert: false,
-          ),
-        );
+              fileKey,
+              fileData,
+              fileOptions: const FileOptions(
+                cacheControl: '3600',
+                upsert: false,
+              ),
+            );
       } else {
         throw ArgumentError('Unsupported file data type');
       }

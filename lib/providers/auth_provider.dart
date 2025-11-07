@@ -51,8 +51,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
     try {
       // Check if onboarding is complete
       final prefs = await SharedPreferences.getInstance();
-      final isOnboardingComplete = prefs.getBool('isOnboardingComplete') ?? false;
-      
+      final isOnboardingComplete =
+          prefs.getBool('isOnboardingComplete') ?? false;
+
       // Check if user is already logged in
       final session = _client.auth.currentSession;
       if (session != null) {
@@ -68,7 +69,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
           return;
         }
       }
-      
+
       state = state.copyWith(
         isLoading: false,
         isOnboardingComplete: isOnboardingComplete,
@@ -111,11 +112,15 @@ class AuthNotifier extends StateNotifier<AuthState> {
           final userId = response.user!.id;
 
           String? idProofUrl;
-          if (role == 'doctor' && idProofBytes != null && idProofFileName != null) {
+          if (role == 'doctor' &&
+              idProofBytes != null &&
+              idProofFileName != null) {
             // Upload identification proof to storage
             final sanitizedName = idProofFileName.replaceAll(' ', '_');
-            final path = 'id_proofs/$userId/${DateTime.now().millisecondsSinceEpoch}_$sanitizedName';
-            idProofUrl = await _supabaseService.uploadFile('id-proofs', path, idProofBytes);
+            final path =
+                'id_proofs/$userId/${DateTime.now().millisecondsSinceEpoch}_$sanitizedName';
+            idProofUrl = await _supabaseService.uploadFile(
+                'id-proofs', path, idProofBytes);
           }
 
           await _supabaseService.createUserProfile(
@@ -181,9 +186,23 @@ class AuthNotifier extends StateNotifier<AuthState> {
       );
 
       if (response.user != null) {
-        final userData = await _supabaseService.getUserProfile(response.user!.id);
+        final userData =
+            await _supabaseService.getUserProfile(response.user!.id);
         if (userData != null) {
-          final user = UserModel.fromJson(userData);
+          // Normalize potentially string-typed numeric fields from the database
+          final normalized = Map<String, dynamic>.from(userData);
+          final dynamic ageVal = normalized['age'];
+          if (ageVal is String) {
+            normalized['age'] = int.tryParse(ageVal);
+          }
+          final dynamic feeVal = normalized['consultation_fee'];
+          if (feeVal is String) {
+            normalized['consultation_fee'] = double.tryParse(feeVal);
+          } else if (feeVal is int) {
+            normalized['consultation_fee'] = (feeVal).toDouble();
+          }
+
+          final user = UserModel.fromJson(normalized);
           state = state.copyWith(
             user: user,
             isLoading: false,
@@ -246,22 +265,28 @@ class AuthNotifier extends StateNotifier<AuthState> {
           name: userData['name'],
           email: userData['email'],
           phone: userData['phone'],
-          age: userData['age'],
+          age: userData['age'] is String
+              ? int.tryParse(userData['age'])
+              : userData['age'],
           gender: userData['gender'],
           specialty: userData['specialty'],
           qualifications: userData['qualifications'],
-          licenseNumber: userData['license_number'] ?? userData['licenseNumber'],
-          clinicAddress: userData['clinic_address'] ?? userData['clinicAddress'],
+          licenseNumber:
+              userData['license_number'] ?? userData['licenseNumber'],
+          clinicAddress:
+              userData['clinic_address'] ?? userData['clinicAddress'],
           consultationFee: (userData['consultation_fee'] is int)
               ? (userData['consultation_fee'] as int).toDouble()
               : (userData['consultation_fee'] as double?),
           idProofUrl: userData['id_proof_url'] ?? userData['idProofUrl'],
-          doctorVerificationStatus: userData['doctor_verification_status'] ?? userData['doctorVerificationStatus'],
+          doctorVerificationStatus: userData['doctor_verification_status'] ??
+              userData['doctorVerificationStatus'],
         );
 
         await _supabaseService.updateUserProfile(updatedUser);
 
-        final updatedUserData = await _supabaseService.getUserProfile(state.user!.id);
+        final updatedUserData =
+            await _supabaseService.getUserProfile(state.user!.id);
         if (updatedUserData != null) {
           final updatedUser = UserModel.fromJson(updatedUserData);
           state = state.copyWith(
@@ -283,7 +308,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
     try {
       final user = await _supabaseService.verifyOTP(email, otp);
-      
+
       // Get user profile after successful OTP verification
       final userData = await _supabaseService.getUserProfile(user.id);
       if (userData != null) {

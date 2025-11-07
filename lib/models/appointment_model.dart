@@ -54,16 +54,37 @@ class AppointmentModel {
   }
 
   factory AppointmentModel.fromJson(Map<String, dynamic> json) {
+    // Resolve start and end time keys robustly across schema variants
+    final String? startStr = json['start_time'] ??
+        json['startTime'] ??
+        json['start_at'] ??
+        json['start'] ??
+        json['created_at'];
+    final DateTime start =
+        startStr != null ? DateTime.parse(startStr) : DateTime.now();
+
+    final String? endStr =
+        json['end_time'] ?? json['endTime'] ?? json['end_at'] ?? json['end'];
+    final DateTime end = endStr != null
+        ? DateTime.parse(endStr)
+        : start.add(const Duration(minutes: 30));
+
     return AppointmentModel(
       id: json['id'],
       patientId: json['patient_id'] ?? json['patientId'],
       doctorId: json['doctor_id'] ?? json['doctorId'],
-      patientName: (json['patient'] is Map) ? json['patient']['name'] : json['patient_name'],
-      doctorName: (json['doctor'] is Map) ? json['doctor']['name'] : json['doctor_name'],
-      doctorSpecialty: (json['doctor'] is Map) ? json['doctor']['specialty'] : json['doctor_specialty'],
+      patientName: (json['patient'] is Map)
+          ? json['patient']['name']
+          : json['patient_name'],
+      doctorName: (json['doctor'] is Map)
+          ? json['doctor']['name']
+          : json['doctor_name'],
+      doctorSpecialty: (json['doctor'] is Map)
+          ? json['doctor']['specialty']
+          : json['doctor_specialty'],
       status: json['status'] ?? 'pending',
-      startTime: DateTime.parse(json['start_time'] ?? json['startTime']),
-      endTime: DateTime.parse(json['end_time'] ?? json['endTime']),
+      startTime: start,
+      endTime: end,
       notes: json['notes'],
       fee: (json['fee'] is int)
           ? (json['fee'] as int).toDouble()

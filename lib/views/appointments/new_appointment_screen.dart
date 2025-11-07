@@ -311,8 +311,12 @@ class _NewAppointmentScreenState extends ConsumerState<NewAppointmentScreen> {
                                                 ),
                                               ),
                                               Text(
-                                                doctor['specialty'] ??
-                                                    'Specialist',
+                                                (doctor['specialty'] ??
+                                                        doctor['specialisation'] ??
+                                                        doctor['specialization'] ??
+                                                        doctor['speciality'] ??
+                                                        'Specialist')
+                                                    .toString(),
                                                 style: const TextStyle(
                                                   fontSize: 14,
                                                   color: Colors.grey,

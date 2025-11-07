@@ -16,7 +16,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
   final List<OnboardingPage> _pages = [
     OnboardingPage(
-      title: 'Welcome to Medical App',
+      title: 'Welcome to CareBridge',
       description: 'Your complete healthcare solution in one place',
       image: Icons.health_and_safety,
     ),

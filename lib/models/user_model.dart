@@ -71,13 +71,22 @@ class UserModel {
   }
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
+    // Normalize age which may be stored as text (e.g., '21') or int
+    int? parsedAge;
+    final dynamic ageVal = json['age'];
+    if (ageVal is int) {
+      parsedAge = ageVal;
+    } else if (ageVal is String) {
+      parsedAge = int.tryParse(ageVal);
+    }
+
     return UserModel(
       id: json['id'] ?? json['user_id'] ?? '',
       name: json['name'] ?? '',
       email: json['email'] ?? '',
       role: json['role'] ?? '',
       phone: json['phone'],
-      age: json['age'],
+      age: parsedAge,
       gender: json['gender'],
       specialty: json['specialty'],
       qualifications: json['qualifications'],
