@@ -172,10 +172,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const SymptomCheckerScreen(),
       ),
       GoRoute(
-        path: '/symptom-result/:id',
+        path: '/symptom-result',
         builder: (context, state) {
-          final resultId = state.pathParameters['id'] ?? '';
-          return SymptomResultScreen(resultId: resultId);
+          final symptoms = (state.extra as Map)['symptoms'] as String;
+          return SymptomResultScreen(symptoms: symptoms);
         },
       ),
 
