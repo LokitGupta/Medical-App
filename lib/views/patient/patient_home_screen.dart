@@ -4,6 +4,9 @@ import 'package:go_router/go_router.dart';
 import 'package:medical_app/providers/auth_provider.dart';
 import 'package:medical_app/widgets/custom_button.dart';
 import 'package:medical_app/widgets/notification_badge.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:flutter_sms/flutter_sms.dart';
 
 class PatientHomeScreen extends ConsumerWidget {
   const PatientHomeScreen({Key? key}) : super(key: key);
@@ -232,7 +235,7 @@ class PatientHomeScreen extends ConsumerWidget {
                   'Emergency',
                   Icons.emergency,
                   Colors.red,
-                  () => context.go('/help'),
+                  () => _showEmergencyOptions(context),
                 ),
               ],
             ),
@@ -311,6 +314,130 @@ class PatientHomeScreen extends ConsumerWidget {
     );
   }
 
+  // ------------------------------------
+  // 🔻 Emergency Bottom Sheet & Features
+  // ------------------------------------
+
+  void _showEmergencyOptions(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) => Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Emergency Options',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            ListTile(
+              leading: const Icon(Icons.local_hospital, color: Colors.red),
+              title: const Text('Call Ambulance'),
+              onTap: () {
+                Navigator.pop(context);
+                _handleEmergencyCall(context);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.location_on, color: Colors.orange),
+              title: const Text('Share Location'),
+              onTap: () {
+                Navigator.pop(context);
+                _shareLocation(context);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.contact_phone, color: Colors.blue),
+              title: const Text('Inform Emergency Contact'),
+              onTap: () {
+                Navigator.pop(context);
+                _contactEmergencyPerson(context);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _handleEmergencyCall(BuildContext context) async {
+    const emergencyNumber = 'tel:911'; // Change for your region
+    final uri = Uri.parse(emergencyNumber);
+
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not initiate emergency call')),
+      );
+    }
+  }
+
+  Future<void> _shareLocation(BuildContext context) async {
+    bool serviceEnabled;
+    LocationPermission permission;
+
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enable location services')),
+      );
+      return;
+    }
+
+    permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Location permission denied')),
+        );
+        return;
+      }
+    }
+
+    if (permission == LocationPermission.deniedForever) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Location permission permanently denied')),
+      );
+      return;
+    }
+
+    Position position = await Geolocator.getCurrentPosition(
+      desiredAccuracy: LocationAccuracy.high,
+    );
+
+    String locationLink =
+        'https://maps.google.com/?q=${position.latitude},${position.longitude}';
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Location shared: $locationLink')),
+    );
+  }
+
+  Future<void> _contactEmergencyPerson(BuildContext context) async {
+    const contactNumber = '+15551234567'; // Replace with saved contact
+    String message = 'Emergency! Please contact me immediately. I need help!';
+
+    try {
+      await sendSMS(message: message, recipients: [contactNumber]);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Emergency SMS sent successfully')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to send message: $e')),
+      );
+    }
+  }
+
+  // ------------------------------------
+  // 🔹 Other UI helper widgets
+  // ------------------------------------
+
   Widget _buildActionCard(
     BuildContext context,
     String title,
@@ -331,11 +458,7 @@ class PatientHomeScreen extends ConsumerWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
-                icon,
-                size: 40,
-                color: color,
-              ),
+              Icon(icon, size: 40, color: color),
               const SizedBox(height: 12),
               Text(
                 title,
@@ -374,10 +497,7 @@ class PatientHomeScreen extends ConsumerWidget {
               CircleAvatar(
                 radius: 25,
                 backgroundColor: Colors.blue.shade100,
-                child: const Icon(
-                  Icons.person,
-                  color: Colors.blue,
-                ),
+                child: const Icon(Icons.person, color: Colors.blue),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -401,11 +521,8 @@ class PatientHomeScreen extends ConsumerWidget {
                     const SizedBox(height: 4),
                     Row(
                       children: [
-                        const Icon(
-                          Icons.access_time,
-                          size: 14,
-                          color: Colors.blue,
-                        ),
+                        const Icon(Icons.access_time,
+                            size: 14, color: Colors.blue),
                         const SizedBox(width: 4),
                         Text(
                           dateTime,
