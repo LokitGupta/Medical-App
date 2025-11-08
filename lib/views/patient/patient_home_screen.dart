@@ -7,6 +7,8 @@ import 'package:medical_app/widgets/notification_badge.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter_sms/flutter_sms.dart';
+import 'package:medical_app/models/user_model.dart';
+// make sure to import your updated UserModel
 
 class PatientHomeScreen extends ConsumerWidget {
   const PatientHomeScreen({Key? key}) : super(key: key);
@@ -18,7 +20,13 @@ class PatientHomeScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('MedApp'),
+        title: const Text(
+          'CareBridge',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF0D47A1), // Bold and colored
+          ),
+        ),
         actions: [
           const NotificationBadge(),
           IconButton(
@@ -38,7 +46,6 @@ class PatientHomeScreen extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // ✅ Profile photo from signup
                   CircleAvatar(
                     radius: 35,
                     backgroundColor: Colors.white,
@@ -266,8 +273,8 @@ class PatientHomeScreen extends ConsumerWidget {
     );
   }
 
-  // 🚨 Emergency Features
-  void _showEmergencyOptions(BuildContext context, dynamic user) {
+  // Emergency Options
+  void _showEmergencyOptions(BuildContext context, UserModel? user) {
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -360,8 +367,6 @@ class PatientHomeScreen extends ConsumerWidget {
       desiredAccuracy: LocationAccuracy.high,
     );
 
-    String mapsUrl =
-        'https://www.google.com/maps/search/hospitals/@${position.latitude},${position.longitude},14z';
     String locationMessage =
         'Emergency! Please send help to my location: https://maps.google.com/?q=${position.latitude},${position.longitude}';
 
@@ -376,29 +381,38 @@ class PatientHomeScreen extends ConsumerWidget {
       );
     }
 
-    final Uri mapsUri = Uri.parse(mapsUrl);
+    final Uri mapsUri = Uri.parse(
+        'https://www.google.com/maps/search/hospitals/@${position.latitude},${position.longitude},14z');
     if (await canLaunchUrl(mapsUri)) {
       await launchUrl(mapsUri);
     }
   }
 
   Future<void> _contactEmergencyPerson(
-      BuildContext context, dynamic user) async {
+      BuildContext context, UserModel? user) async {
+    // Default emergency contact
     List<String> emergencyContacts = ['+911234567890'];
 
-    try {
-      final contacts = user?.emergencyContacts;
-      if (contacts != null) {
-        if (contacts is List) {
-          emergencyContacts = contacts.map((c) => c.toString()).toList();
-        } else if (contacts is String) {
-          emergencyContacts = contacts.split(',').map((c) => c.trim()).toList();
-        }
+    if (user != null) {
+      emergencyContacts = [
+        if (user.emergencyContact1 != null &&
+            user.emergencyContact1!.isNotEmpty)
+          user.emergencyContact1!,
+        if (user.emergencyContact2 != null &&
+            user.emergencyContact2!.isNotEmpty)
+          user.emergencyContact2!,
+      ];
+
+      if (emergencyContacts.isEmpty) {
+        emergencyContacts = ['+911234567890'];
       }
+    }
 
-      String message = 'Need medical help! Please reach out immediately.';
+    try {
+      await sendSMS(
+          message: 'Need medical help! Please reach out immediately.',
+          recipients: emergencyContacts);
 
-      await sendSMS(message: message, recipients: emergencyContacts);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Emergency contacts notified')),
       );
