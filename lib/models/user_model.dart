@@ -15,6 +15,7 @@ class UserModel {
   final String? idProofUrl;
   final String? emergencyContact1;
   final String? emergencyContact2;
+  final String? profileImageUrl; // ✅ Added field
   final DateTime createdAt;
 
   UserModel({
@@ -34,6 +35,7 @@ class UserModel {
     this.idProofUrl,
     this.emergencyContact1,
     this.emergencyContact2,
+    this.profileImageUrl, // ✅ Added constructor parameter
     required this.createdAt,
   });
 
@@ -54,6 +56,7 @@ class UserModel {
     String? idProofUrl,
     String? emergencyContact1,
     String? emergencyContact2,
+    String? profileImageUrl, // ✅ Added in copyWith
     DateTime? createdAt,
   }) {
     return UserModel(
@@ -74,12 +77,12 @@ class UserModel {
       idProofUrl: idProofUrl ?? this.idProofUrl,
       emergencyContact1: emergencyContact1 ?? this.emergencyContact1,
       emergencyContact2: emergencyContact2 ?? this.emergencyContact2,
+      profileImageUrl: profileImageUrl ?? this.profileImageUrl, // ✅ Added
       createdAt: createdAt ?? this.createdAt,
     );
   }
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
-    // Normalize age which may be stored as text (e.g., '21') or int
     int? parsedAge;
     final dynamic ageVal = json['age'];
     if (ageVal is int) {
@@ -109,6 +112,7 @@ class UserModel {
       idProofUrl: json['id_proof_url'],
       emergencyContact1: json['emergency_contact_1'],
       emergencyContact2: json['emergency_contact_2'],
+      profileImageUrl: json['profile_image_url'], // ✅ Read from backend
       createdAt: DateTime.tryParse(json['created_at'] ?? '') ?? DateTime.now(),
     );
   }
@@ -132,6 +136,8 @@ class UserModel {
       if (idProofUrl != null) 'id_proof_url': idProofUrl,
       if (emergencyContact1 != null) 'emergency_contact_1': emergencyContact1,
       if (emergencyContact2 != null) 'emergency_contact_2': emergencyContact2,
+      if (profileImageUrl != null)
+        'profile_image_url': profileImageUrl, // ✅ Include in upload
       'created_at': createdAt.toIso8601String(),
     };
   }
