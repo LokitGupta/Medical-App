@@ -72,7 +72,16 @@ class AppointmentDetailsScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Appointment Details'),
+        backgroundColor: const Color(0xFF0D47A1),
+        centerTitle: true,
+        title: const Text(
+          'Appointment Details',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+          ),
+        ),
         actions: [
           if (appointmentExists && appointment.status != 'cancelled')
             IconButton(

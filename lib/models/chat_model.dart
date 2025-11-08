@@ -1,5 +1,6 @@
 class ChatModel {
   final String? id;
+  final String? chatRoomId;
   final String senderId;
   final String receiverId;
   final String message;
@@ -7,10 +8,10 @@ class ChatModel {
   final bool isRead;
   final String? attachmentUrl;
   final String? appointmentId;
-  final String? chatRoomId;
 
   ChatModel({
     this.id,
+    required this.chatRoomId,
     required this.senderId,
     required this.receiverId,
     required this.message,
@@ -18,26 +19,26 @@ class ChatModel {
     this.isRead = false,
     this.attachmentUrl,
     this.appointmentId,
-    this.chatRoomId,
   });
 
   factory ChatModel.fromJson(Map<String, dynamic> json) {
     return ChatModel(
-      id: json['id'],
-      senderId: json['sender_id'],
-      receiverId: json['receiver_id'],
-      message: json['message'],
-      timestamp: DateTime.parse(json['timestamp']),
+      id: json['id']?.toString(),
+      chatRoomId: json['chat_room_id']?.toString(),
+      senderId: json['sender_id'] as String,
+      receiverId: json['receiver_id'] as String,
+      message: json['message'] as String,
+      timestamp: DateTime.parse(json['timestamp'] as String),
       isRead: json['is_read'] ?? false,
       attachmentUrl: json['attachment_url'],
-      appointmentId: json['appointment_id'],
-      chatRoomId: json['chat_room_id'],
+      appointmentId: json['appointment_id']?.toString(),
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
       'id': id,
+      'chat_room_id': chatRoomId,
       'sender_id': senderId,
       'receiver_id': receiverId,
       'message': message,
@@ -45,63 +46,6 @@ class ChatModel {
       'is_read': isRead,
       'attachment_url': attachmentUrl,
       'appointment_id': appointmentId,
-      'chat_room_id': chatRoomId,
-    };
-  }
-}
-
-class ChatRoomModel {
-  final String? id;
-  final String patientId;
-  final String doctorId;
-  final String? patientName;
-  final String? doctorName;
-  final String? patientAvatar;
-  final String? doctorAvatar;
-  final DateTime lastMessageTime;
-  final String? lastMessage;
-  final int unreadCount;
-
-  ChatRoomModel({
-    this.id,
-    required this.patientId,
-    required this.doctorId,
-    this.patientName,
-    this.doctorName,
-    this.patientAvatar,
-    this.doctorAvatar,
-    required this.lastMessageTime,
-    this.lastMessage,
-    this.unreadCount = 0,
-  });
-
-  factory ChatRoomModel.fromJson(Map<String, dynamic> json) {
-    return ChatRoomModel(
-      id: json['id'],
-      patientId: json['patient_id'],
-      doctorId: json['doctor_id'],
-      patientName: json['patient_name'],
-      doctorName: json['doctor_name'],
-      patientAvatar: json['patient_avatar'],
-      doctorAvatar: json['doctor_avatar'],
-      lastMessageTime: DateTime.parse(json['last_message_time']),
-      lastMessage: json['last_message'],
-      unreadCount: json['unread_count'] ?? 0,
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'patient_id': patientId,
-      'doctor_id': doctorId,
-      'patient_name': patientName,
-      'doctor_name': doctorName,
-      'patient_avatar': patientAvatar,
-      'doctor_avatar': doctorAvatar,
-      'last_message_time': lastMessageTime.toIso8601String(),
-      'last_message': lastMessage,
-      'unread_count': unreadCount,
     };
   }
 }

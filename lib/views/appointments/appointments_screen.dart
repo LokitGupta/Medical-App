@@ -72,9 +72,21 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen>
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('My Appointments'),
+        backgroundColor: const Color(0xFF0D47A1),
+        centerTitle: true,
+        title: const Text(
+          'My Appointments',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+          ),
+        ),
         bottom: TabBar(
           controller: _tabController,
+          labelColor: Colors.white,
+          unselectedLabelColor: Colors.white70,
+          indicatorColor: Colors.white,
           tabs: const [
             Tab(text: 'Pending'),
             Tab(text: 'Upcoming'),

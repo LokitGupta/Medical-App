@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import 'package:medical_app/models/chat_model.dart';
+import 'package:medical_app/models/chat_room_model.dart';
 import 'package:medical_app/providers/auth_provider.dart';
 import 'package:medical_app/providers/chat_provider.dart';
 
@@ -21,7 +21,7 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
   }
 
   Future<void> _loadChatRooms() async {
-    final authState = ref.watch(authProvider);
+    final authState = ref.read(authProvider);
     final userId = authState.user?.id;
     final isDoctor = authState.user?.role == 'doctor';
 
@@ -99,7 +99,9 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
   Widget _buildChatRoomTile(ChatRoomModel chatRoom, bool isDoctor) {
     final name = isDoctor ? chatRoom.patientName : chatRoom.doctorName;
     final avatar = isDoctor ? chatRoom.patientAvatar : chatRoom.doctorAvatar;
-    final formattedTime = _formatLastMessageTime(chatRoom.lastMessageTime);
+    final formattedTime = chatRoom.lastMessageTime != null
+        ? _formatLastMessageTime(chatRoom.lastMessageTime!)
+        : '';
 
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
@@ -186,7 +188,7 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
     if (difference.inDays > 7) {
       return DateFormat('MMM d').format(time);
     } else if (difference.inDays > 0) {
-      return DateFormat('E').format(time); // Day of week
+      return DateFormat('E').format(time);
     } else if (difference.inHours > 0) {
       return '${difference.inHours}h ago';
     } else if (difference.inMinutes > 0) {

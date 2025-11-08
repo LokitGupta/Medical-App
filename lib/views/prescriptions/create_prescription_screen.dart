@@ -368,10 +368,11 @@ class _CreatePrescriptionScreenState
 
                     // Upload Prescription File
                     const Text(
-                      'Upload Prescription (Optional)',
+                      'CareBridge',
                       style: TextStyle(
-                        fontSize: 18,
                         fontWeight: FontWeight.bold,
+                        color: Color(0xFF0D47A1),
+                        fontSize: 26,
                       ),
                     ),
                     const SizedBox(height: 16),

@@ -118,10 +118,26 @@ class _MedicalRecordsScreenState extends ConsumerState<MedicalRecordsScreen>
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Medical Records'),
+        backgroundColor: const Color(0xFF0D47A1), // Dark blue background
+        centerTitle: true,
+        title: const Text(
+          'Medical Records',
+          style: TextStyle(
+            color: Colors.white, // ✅ White title
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+          ),
+        ),
         bottom: TabBar(
           controller: _tabController,
           isScrollable: true,
+          labelColor: Colors.white, // ✅ Selected tab text white
+          unselectedLabelColor:
+              Colors.white70, // ✅ Unselected tab text slightly faded
+          indicatorColor: Colors.white, // ✅ White underline indicator
+          labelStyle: const TextStyle(
+            fontWeight: FontWeight.bold,
+          ),
           onTap: (index) {
             setState(() {
               _selectedType = _recordTypes[index];

@@ -14,7 +14,12 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
   final TextEditingController _controller = TextEditingController();
   final List<Map<String, dynamic>> _messages = [];
   bool _isTyping = false;
-  bool _showSuggestions = false; // ✅ Controls when to show buttons
+  bool _showSuggestions = false;
+
+  // ✅ API Configuration (easy to change for other chat contexts)
+  static const String apiUrl = 'https://openrouter.ai/api/v1/chat/completions';
+  static const String apiKey =
+      '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'; // Replace with your new key for other chatbots
 
   // --- Send message + get response ---
   Future<void> _sendMessage(String text) async {
@@ -23,7 +28,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
     setState(() {
       _messages.add({'text': text, 'isUser': true});
       _isTyping = true;
-      _showSuggestions = false; // hide buttons unless triggered
+      _showSuggestions = false;
     });
 
     _controller.clear();
@@ -46,9 +51,8 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
   bool _handleKeywordActions(String text) {
     final lower = text.toLowerCase();
 
-    // Automatic navigation based on context
     if (lower.contains('appointment') ||
-        lower.contains('book') && lower.contains('doctor')) {
+        (lower.contains('book') && lower.contains('doctor'))) {
       _addBotResponse('📅 Sure! Redirecting you to appointment booking...');
       Future.delayed(const Duration(milliseconds: 800),
           () => context.go('/appointments/new'));
@@ -94,18 +98,14 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
     return false;
   }
 
-  // --- OpenRouter AI API Call ---
+  // --- API Call (OpenRouter) ---
   Future<String> _getAIResponse(String userText) async {
-    const apiUrl = 'https://openrouter.ai/api/v1/chat/completions';
-    const apiKey =
-        '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';
-
     try {
       final response = await http.post(
         Uri.parse(apiUrl),
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer $apiKey',
+          'Authorization': 'Bearer $apiKey', // ✅ Use the centralized key
         },
         body: jsonEncode({
           'model': 'gpt-3.5-turbo',
@@ -115,7 +115,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
               'content': 'You are CareBridge Assistant, an empathetic AI healthcare companion. '
                   'You help users manage their health, book doctor appointments, check symptoms, manage medications, '
                   'and handle emergencies. If it’s an emergency, tell them to contact 112 immediately. '
-                  'Encourage wellness and positive tone.'
+                  'Encourage wellness and a positive, supportive tone.'
             },
             ..._messages.map((m) => {
                   'role': m['isUser'] ? 'user' : 'assistant',
@@ -141,7 +141,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
     }
   }
 
-  // --- Helper: Add bot response ---
+  // --- Add bot response ---
   void _addBotResponse(String text) {
     setState(() {
       _messages.add({'text': text, 'isUser': false});
@@ -153,7 +153,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
     setState(() => _showSuggestions = true);
   }
 
-  // --- Quick action button logic ---
+  // --- Handle suggestion button tap ---
   void _handleSuggestionTap(String option) {
     setState(() => _showSuggestions = false);
     switch (option) {
