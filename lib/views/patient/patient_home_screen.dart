@@ -38,14 +38,22 @@ class PatientHomeScreen extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const CircleAvatar(
-                    radius: 30,
+                  // ✅ Profile photo from signup
+                  CircleAvatar(
+                    radius: 35,
                     backgroundColor: Colors.white,
-                    child: Icon(
-                      Icons.person,
-                      size: 30,
-                      color: Colors.blue,
-                    ),
+                    backgroundImage: (user?.profileImageUrl != null &&
+                            user!.profileImageUrl!.isNotEmpty)
+                        ? NetworkImage(user.profileImageUrl!)
+                        : null,
+                    child: (user?.profileImageUrl == null ||
+                            user!.profileImageUrl!.isEmpty)
+                        ? const Icon(
+                            Icons.person,
+                            size: 40,
+                            color: Colors.blue,
+                          )
+                        : null,
                   ),
                   const SizedBox(height: 10),
                   Text(
@@ -65,80 +73,80 @@ class PatientHomeScreen extends ConsumerWidget {
                 ],
               ),
             ),
-            ListTile(
-              leading: const Icon(Icons.home),
-              title: const Text('Home'),
+            _buildDrawerItem(
+              icon: Icons.home,
+              title: 'Home',
               onTap: () => Navigator.pop(context),
             ),
-            ListTile(
-              leading: const Icon(Icons.calendar_today),
-              title: const Text('Appointments'),
+            _buildDrawerItem(
+              icon: Icons.calendar_today,
+              title: 'Appointments',
               onTap: () {
                 Navigator.pop(context);
                 context.go('/appointments');
               },
             ),
-            ListTile(
-              leading: const Icon(Icons.description),
-              title: const Text('Medical Records'),
+            _buildDrawerItem(
+              icon: Icons.description,
+              title: 'Medical Records',
               onTap: () {
                 Navigator.pop(context);
                 context.go('/records');
               },
             ),
-            ListTile(
-              leading: const Icon(Icons.medication),
-              title: const Text('Medications'),
+            _buildDrawerItem(
+              icon: Icons.medication,
+              title: 'Medications',
               onTap: () {
                 Navigator.pop(context);
                 context.go('/medication-reminders');
               },
             ),
-            ListTile(
-              leading: const Icon(Icons.chat),
-              title: const Text('Chats'),
+            _buildDrawerItem(
+              icon: Icons.chat,
+              title: 'Chats',
               onTap: () {
                 Navigator.pop(context);
                 context.go('/chats');
               },
             ),
             const Divider(),
-            ListTile(
-              leading: const Icon(Icons.payment),
-              title: const Text('Payments'),
+            _buildDrawerItem(
+              icon: Icons.payment,
+              title: 'Payments',
               onTap: () {
                 Navigator.pop(context);
                 context.go('/payment-history');
               },
             ),
-            ListTile(
-              leading: const Icon(Icons.credit_card),
-              title: const Text('Payment Methods'),
+            _buildDrawerItem(
+              icon: Icons.credit_card,
+              title: 'Payment Methods',
               onTap: () {
                 Navigator.pop(context);
                 context.go('/payment-methods');
               },
             ),
-            ListTile(
-              leading: const Icon(Icons.health_and_safety),
-              title: const Text('Insurance'),
+            _buildDrawerItem(
+              icon: Icons.health_and_safety,
+              title: 'Insurance',
               onTap: () {
                 Navigator.pop(context);
                 context.go('/insurance-management');
               },
             ),
-            ListTile(
-              leading: const Icon(Icons.help),
-              title: const Text('Help'),
+            _buildDrawerItem(
+              icon: Icons.help,
+              title: 'Help',
               onTap: () {
                 Navigator.pop(context);
                 context.go('/help');
               },
             ),
             const Divider(),
-            ListTile(
-              leading: const Icon(Icons.logout),
-              title: const Text('Logout'),
+            _buildDrawerItem(
+              icon: Icons.logout,
+              title: 'Logout',
               onTap: () async {
                 await ref.read(authProvider.notifier).signOut();
                 if (context.mounted) {
@@ -245,10 +253,20 @@ class PatientHomeScreen extends ConsumerWidget {
     );
   }
 
-  // ------------------------------------
-  // 🚨 Emergency Bottom Sheet & Features
-  // ------------------------------------
+  // Drawer Item Builder
+  Widget _buildDrawerItem({
+    required IconData icon,
+    required String title,
+    required VoidCallback onTap,
+  }) {
+    return ListTile(
+      leading: Icon(icon),
+      title: Text(title),
+      onTap: onTap,
+    );
+  }
 
+  // 🚨 Emergency Features
   void _showEmergencyOptions(BuildContext context, dynamic user) {
     showModalBottomSheet(
       context: context,
@@ -295,7 +313,6 @@ class PatientHomeScreen extends ConsumerWidget {
     );
   }
 
-  /// 🚑 Call Ambulance (102)
   void _handleEmergencyCall(BuildContext context) async {
     const emergencyNumber = 'tel:102';
     final uri = Uri.parse(emergencyNumber);
@@ -309,7 +326,6 @@ class PatientHomeScreen extends ConsumerWidget {
     }
   }
 
-  /// 📍 Share current location and show nearby hospitals
   Future<void> _shareLocation(BuildContext context) async {
     bool serviceEnabled;
     LocationPermission permission;
@@ -349,7 +365,6 @@ class PatientHomeScreen extends ConsumerWidget {
     String locationMessage =
         'Emergency! Please send help to my location: https://maps.google.com/?q=${position.latitude},${position.longitude}';
 
-    // Send location via SMS to 102
     try {
       await sendSMS(message: locationMessage, recipients: ['102']);
       ScaffoldMessenger.of(context).showSnackBar(
@@ -361,17 +376,15 @@ class PatientHomeScreen extends ConsumerWidget {
       );
     }
 
-    // Open Google Maps for nearby hospitals
     final Uri mapsUri = Uri.parse(mapsUrl);
     if (await canLaunchUrl(mapsUri)) {
       await launchUrl(mapsUri);
     }
   }
 
-  /// 📲 Inform emergency contacts
   Future<void> _contactEmergencyPerson(
       BuildContext context, dynamic user) async {
-    List<String> emergencyContacts = ['+911234567890']; // default
+    List<String> emergencyContacts = ['+911234567890'];
 
     try {
       final contacts = user?.emergencyContacts;
@@ -379,7 +392,6 @@ class PatientHomeScreen extends ConsumerWidget {
         if (contacts is List) {
           emergencyContacts = contacts.map((c) => c.toString()).toList();
         } else if (contacts is String) {
-          // handle comma-separated string case
           emergencyContacts = contacts.split(',').map((c) => c.trim()).toList();
         }
       }
@@ -397,9 +409,6 @@ class PatientHomeScreen extends ConsumerWidget {
     }
   }
 
-  // ------------------------------------
-  // 🔹 Helper UI Components
-  // ------------------------------------
   Widget _buildActionCard(BuildContext context, String title, IconData icon,
       Color color, VoidCallback onTap) {
     return InkWell(
@@ -415,10 +424,12 @@ class PatientHomeScreen extends ConsumerWidget {
             children: [
               Icon(icon, size: 40, color: color),
               const SizedBox(height: 12),
-              Text(title,
-                  style: const TextStyle(
-                      fontSize: 16, fontWeight: FontWeight.bold),
-                  textAlign: TextAlign.center),
+              Text(
+                title,
+                style:
+                    const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
+              ),
             ],
           ),
         ),
