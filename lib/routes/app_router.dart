@@ -244,6 +244,22 @@ final appRouterProvider = Provider<GoRouter>((ref) {
 
       // Payment routes
       GoRoute(
+        path: '/payments/checkout',
+        builder: (context, state) {
+          final appointmentId = state.uri.queryParameters['appointmentId'] ?? '';
+          final referenceId = state.uri.queryParameters['referenceId'] ?? appointmentId;
+          final paymentType = state.uri.queryParameters['paymentType'] ?? 'appointment';
+          final amount =
+              double.tryParse(state.uri.queryParameters['amount'] ?? '0') ??
+                  0.0;
+          return PaymentCheckoutScreen(
+            referenceId: referenceId,
+            paymentType: paymentType,
+            amount: amount,
+          );
+        },
+      ),
+      GoRoute(
         path: '/payment-checkout',
         builder: (context, state) {
           final referenceId = state.uri.queryParameters['referenceId'] ?? '';
