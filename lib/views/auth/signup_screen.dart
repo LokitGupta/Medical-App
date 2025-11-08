@@ -23,6 +23,8 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
   final _doctorNumberController = TextEditingController();
   final _phoneController = TextEditingController();
   final _ageController = TextEditingController();
+  final _emergencyContact1Controller = TextEditingController();
+  final _emergencyContact2Controller = TextEditingController();
   final _clinicAddressController = TextEditingController();
   final _consultationFeeController = TextEditingController();
   bool _isPasswordVisible = false;
@@ -31,6 +33,8 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
   String? _selectedSpecialty;
   Uint8List? _idProofBytes;
   String? _idProofFileName;
+  Uint8List? _profileImageBytes;
+  String? _profileImageFileName;
   // Consistent specialties list for doctor signup
   final List<String> _specialties = const [
     'Cardiology',
@@ -56,6 +60,8 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
     _doctorNumberController.dispose();
     _phoneController.dispose();
     _ageController.dispose();
+    _emergencyContact1Controller.dispose();
+    _emergencyContact2Controller.dispose();
     _clinicAddressController.dispose();
     _consultationFeeController.dispose();
     super.dispose();
@@ -139,6 +145,12 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
           return;
         }
       }
+      if (_profileImageBytes == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please upload a profile image')),
+        );
+        return;
+      }
 
       await ref.read(authProvider.notifier).signUp(
             email: _emailController.text.trim(),
@@ -154,13 +166,15 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
             phone: '+91${_phoneController.text.trim()}',
             age: int.tryParse(_ageController.text.trim()),
             gender: _selectedGender,
-            clinicAddress: _selectedRole == 'doctor'
-                ? _clinicAddressController.text.trim()
+            emergencyContact1: _selectedRole == 'patient'
+                ? '+91${_emergencyContact1Controller.text.trim()}'
                 : null,
-            consultationFee: _selectedRole == 'doctor'
-                ? double.tryParse(_consultationFeeController.text.trim())
+            emergencyContact2: _selectedRole == 'patient' &&
+                    _emergencyContact2Controller.text.trim().isNotEmpty
+                ? '+91${_emergencyContact2Controller.text.trim()}'
                 : null,
-            specialty: _selectedRole == 'doctor' ? _selectedSpecialty : null,
+            profileImageBytes: _profileImageBytes,
+            profileImageFileName: _profileImageFileName,
           );
 
       if (mounted && ref.read(authProvider).error == null) {
@@ -213,6 +227,58 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                 ),
                 const SizedBox(height: 32),
 
+                // --- Profile Image Upload ---
+                Center(
+                  child: Stack(
+                    children: [
+                      CircleAvatar(
+                        radius: 60,
+                        backgroundImage: _profileImageBytes != null
+                            ? MemoryImage(_profileImageBytes!)
+                            : null,
+                        child: _profileImageBytes == null
+                            ? const Icon(Icons.person,
+                                size: 60, color: Colors.grey)
+                            : null,
+                      ),
+                      Positioned(
+                        bottom: 0,
+                        right: 0,
+                        child: IconButton(
+                          icon: const Icon(Icons.camera_alt,
+                              color: Colors.white, size: 28),
+                          style: IconButton.styleFrom(
+                            backgroundColor: Colors.blue,
+                            shape: const CircleBorder(),
+                          ),
+                          onPressed: () async {
+                            try {
+                              final result =
+                                  await FilePicker.platform.pickFiles(
+                                type: FileType.image,
+                                withData: true,
+                              );
+                              if (result != null && result.files.isNotEmpty) {
+                                final file = result.files.single;
+                                setState(() {
+                                  _profileImageBytes = file.bytes;
+                                  _profileImageFileName = file.name;
+                                });
+                              }
+                            } catch (e) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                    content: Text('Error selecting image: $e')),
+                              );
+                            }
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 32),
+
                 // --- Role Selection ---
                 const Text(
                   'I am a:',
@@ -245,6 +311,79 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                   ],
                 ),
                 const SizedBox(height: 16),
+
+                // --- Patient Specific Fields: Emergency Contacts ---
+                if (_selectedRole == 'patient') ...[
+                  const Text(
+                    'Emergency Contacts',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 16),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey.shade400),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child:
+                            const Text('+91', style: TextStyle(fontSize: 16)),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: CustomTextField(
+                          controller: _emergencyContact1Controller,
+                          labelText: 'Emergency Contact 1',
+                          hintText: '10-digit mobile number',
+                          keyboardType: TextInputType.phone,
+                          validator: (value) {
+                            if (_selectedRole == 'patient') {
+                              return _validatePhone(value);
+                            }
+                            return null;
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 16),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey.shade400),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child:
+                            const Text('+91', style: TextStyle(fontSize: 16)),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: CustomTextField(
+                          controller: _emergencyContact2Controller,
+                          labelText: 'Emergency Contact 2 (Optional)',
+                          hintText: '10-digit mobile number',
+                          keyboardType: TextInputType.phone,
+                          validator: (value) {
+                            if (_selectedRole == 'patient' &&
+                                value != null &&
+                                value.trim().isNotEmpty) {
+                              return _validatePhone(value);
+                            }
+                            return null;
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                ],
 
                 // --- Doctor Specific Fields ---
                 if (_selectedRole == 'doctor') ...[

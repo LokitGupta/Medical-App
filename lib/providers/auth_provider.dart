@@ -90,15 +90,20 @@ class AuthNotifier extends StateNotifier<AuthState> {
     String? phone,
     int? age,
     String? gender,
+    String? emergencyContact1,
+    String? emergencyContact2,
     String? doctorNumber,
     Uint8List? idProofBytes,
     String? idProofFileName,
     String? clinicAddress,
     double? consultationFee,
     String? specialty,
+    String? emergencyContact1,
+    String? emergencyContact2,
+    Uint8List? profileImageBytes,
+    String? profileImageFileName,
   }) async {
-    state = state.copyWith(isLoading: true, error: null);
-
+    state = const AuthState(isLoading: true);
     try {
       // Sign up with Supabase Auth
       final response = await _client.auth.signUp(
@@ -131,6 +136,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
             phone: phone,
             age: age,
             gender: gender,
+            emergencyContact1: emergencyContact1,
+            emergencyContact2: emergencyContact2,
             licenseNumber: doctorNumber,
             consultationFee: consultationFee,
             clinicAddress: clinicAddress,

@@ -78,42 +78,89 @@ class SupabaseService {
     String? clinicAddress,
     double? consultationFee,
     String? idProofUrl,
+    String? emergencyContact1,
+    String? emergencyContact2,
+    Uint8List? profileImageBytes,
+    String? profileImageFileName,
   }) async {
-    final Map<String, dynamic> data = {
-      'id': userId,
-      'role': role,
-      'name': name,
-      'email': email,
-      'phone': phone,
-    };
+    try {
+      final userId = _supabase.auth.currentUser!.id;
+      String? idProofUrl;
+      String? profileImageUrl;
 
-    // Store age & gender for both patients and doctors when provided
-    if (age != null) {
-      data['age'] = age;
-    }
-    if (gender != null) {
-      data['gender'] = gender;
-    }
+      // Upload ID proof if it exists
+      if (idProofBytes != null && idProofFileName != null) {
+        final idProofPath = '/$userId/documents/$idProofFileName';
+        await _supabase.storage
+            .from('user_documents')
+            .uploadBinary(
+              idProofPath,
+              idProofBytes,
+              fileOptions: const FileOptions(
+                cacheControl: '3600',
+                upsert: false,
+              ),
+            );
+        idProofUrl = _supabase.storage
+            .from('user_documents')
+            .getPublicUrl(idProofPath);
+      }
 
-    if (role == 'doctor') {
-      data.addAll({
-        'specialty': specialty,
-        'qualifications': qualifications,
-        'license_number': licenseNumber,
-        'clinic_address': clinicAddress,
-        'consultation_fee': consultationFee,
-        'id_proof_url': idProofUrl,
-        'doctor_verification_status': 'pending',
-      });
-    }
+      // Upload profile image if it exists
+      if (profileImageBytes != null && profileImageFileName != null) {
+        final profileImagePath =
+            '/$userId/profile_images/$profileImageFileName';
+        await _supabase.storage
+            .from('profile_images')
+            .uploadBinary(
+              profileImagePath,
+              profileImageBytes,
+              fileOptions: const FileOptions(
+                cacheControl: '3600',
+                upsert: false,
+              ),
+            );
+        profileImageUrl = _supabase.storage
+            .from('profile_images')
+            .getPublicUrl(profileImagePath);
+      }
 
-    await _client.from('users').insert(data);
+      final data = {
+        'id': userId,
+        'name': name,
+        'role': role,
+        'phone': phone,
+        'age': age,
+        'gender': gender,
+        'profile_image_url': profileImageUrl,
+      };
+
+      if (role == 'doctor') {
+        data.addAll({
+          'specialty': specialty,
+          'qualifications': qualifications,
+          'license_number': licenseNumber,
+          'clinic_address': clinicAddress,
+          'consultation_fee': consultationFee,
+          'id_proof_url': idProofUrl,
+          'doctor_verification_status': 'pending',
+        });
+      }
+
+      await _client.from('users').insert(data);
+    } catch (e) {
+      // Log the detailed error
+      throw e;
+    }
   }
 
   Future<Map<String, dynamic>?> getUserProfile(String userId) async {
     // Use maybeSingle to avoid PGRST116 when no rows exist yet
-    final data =
-        await _client.from('users').select().eq('id', userId).maybeSingle();
+    final data = await _client
+        .from('users')
+        .select()
+        .eq('id', userId)
+        .maybeSingle();
 
     return data;
   }
@@ -150,7 +197,9 @@ class SupabaseService {
 
   // Appointment methods
   Future<List<Map<String, dynamic>>> getAppointments(
-      String userId, String role) async {
+    String userId,
+    String role,
+  ) async {
     final String fieldName = role == 'doctor' ? 'doctor_id' : 'patient_id';
 
     try {
@@ -159,7 +208,8 @@ class SupabaseService {
       final dataUsersFk = await _client
           .from('appointments')
           .select(
-              '*, doctor:users!appointments_doctor_id_fkey(name, specialty), patient:users!appointments_patient_id_fkey(name)')
+            '*, doctor:users!appointments_doctor_id_fkey(name, specialty), patient:users!appointments_patient_id_fkey(name)',
+          )
           .eq(fieldName, userId);
       return List<Map<String, dynamic>>.from(dataUsersFk);
     } on PostgrestException catch (_) {
@@ -168,13 +218,16 @@ class SupabaseService {
         final dataPatientsFk = await _client
             .from('appointments')
             .select(
-                '*, doctor:users!appointments_doctor_id_fkey(name, specialty), patient:patients!appointments_patient_id_fkey(name)')
+              '*, doctor:users!appointments_doctor_id_fkey(name, specialty), patient:patients!appointments_patient_id_fkey(name)',
+            )
             .eq(fieldName, userId);
         return List<Map<String, dynamic>>.from(dataPatientsFk);
       } on PostgrestException catch (_) {
         // Fallback: select all columns without specifying names to avoid schema mismatch errors
-        final data =
-            await _client.from('appointments').select().eq(fieldName, userId);
+        final data = await _client
+            .from('appointments')
+            .select()
+            .eq(fieldName, userId);
         return List<Map<String, dynamic>>.from(data);
       }
     }
@@ -209,15 +262,19 @@ class SupabaseService {
   }
 
   Future<void> updateAppointmentStatus(
-      String appointmentId, String status) async {
+    String appointmentId,
+    String status,
+  ) async {
     await _client
         .from('appointments')
-        .update({'status': status}).eq('id', appointmentId);
+        .update({'status': status})
+        .eq('id', appointmentId);
   }
 
   // Doctor methods
   Future<List<Map<String, dynamic>>> getDoctorsBySpecialty(
-      String specialty) async {
+    String specialty,
+  ) async {
     // Build synonyms to handle differences like 'Cardiology' vs 'Cardiologist'
     final Map<String, List<String>> synonyms = {
       'Cardiology': ['Cardiologist'],
@@ -240,8 +297,11 @@ class SupabaseService {
 
     final orFilter = terms.map((t) => "specialty.ilike.%${t}%").join(',');
 
-    final data =
-        await _client.from('users').select().eq('role', 'doctor').or(orFilter);
+    final data = await _client
+        .from('users')
+        .select()
+        .eq('role', 'doctor')
+        .or(orFilter);
 
     return List<Map<String, dynamic>>.from(data);
   }
@@ -256,7 +316,8 @@ class SupabaseService {
       final dataUsersFk = await _client
           .from('appointments')
           .select(
-              '*, doctor:users!appointments_doctor_id_fkey(name, specialty), patient:users!appointments_patient_id_fkey(name)')
+            '*, doctor:users!appointments_doctor_id_fkey(name, specialty), patient:users!appointments_patient_id_fkey(name)',
+          )
           .eq('id', appointmentId)
           .maybeSingle();
       return dataUsersFk;
@@ -265,7 +326,8 @@ class SupabaseService {
         final dataPatientsFk = await _client
             .from('appointments')
             .select(
-                '*, doctor:users!appointments_doctor_id_fkey(name, specialty), patient:patients!appointments_patient_id_fkey(name)')
+              '*, doctor:users!appointments_doctor_id_fkey(name, specialty), patient:patients!appointments_patient_id_fkey(name)',
+            )
             .eq('id', appointmentId)
             .maybeSingle();
         return dataPatientsFk;
@@ -302,7 +364,8 @@ class SupabaseService {
   }
 
   Future<List<Map<String, dynamic>>> getPatientPrescriptions(
-      String patientId) async {
+    String patientId,
+  ) async {
     final data = await _client
         .from('prescriptions')
         .select('*, appointment:appointment_id(doctor:doctor_id(name))')
@@ -312,7 +375,8 @@ class SupabaseService {
   }
 
   Future<List<Map<String, dynamic>>> getDoctorPrescriptions(
-      String doctorId) async {
+    String doctorId,
+  ) async {
     final data = await _client
         .from('prescriptions')
         .select('*, appointment:appointment_id(doctor:doctor_id(name))')
@@ -321,7 +385,8 @@ class SupabaseService {
   }
 
   Future<Map<String, dynamic>?> getPrescriptionByAppointment(
-      String appointmentId) async {
+    String appointmentId,
+  ) async {
     final data = await _client
         .from('prescriptions')
         .select('*, appointment:appointment_id(doctor:doctor_id(name))')
@@ -332,10 +397,13 @@ class SupabaseService {
   }
 
   Future<void> updatePrescriptionFile(
-      String prescriptionId, String fileUrl) async {
+    String prescriptionId,
+    String fileUrl,
+  ) async {
     await _client
         .from('prescriptions')
-        .update({'file_url': fileUrl}).eq('id', prescriptionId);
+        .update({'file_url': fileUrl})
+        .eq('id', prescriptionId);
   }
 
   // Storage methods
@@ -345,23 +413,21 @@ class SupabaseService {
     if (file is io.File) {
       // Read bytes from native file and upload as binary (works across platforms)
       final Uint8List bytes = await file.readAsBytes();
-      response = await _client.storage.from(bucket).uploadBinary(
+      response = await _client.storage
+          .from(bucket)
+          .uploadBinary(
             path,
             bytes,
-            fileOptions: const FileOptions(
-              cacheControl: '3600',
-              upsert: false,
-            ),
+            fileOptions: const FileOptions(cacheControl: '3600', upsert: false),
           );
     } else if (file is Uint8List) {
       // Web or pre-read bytes
-      response = await _client.storage.from(bucket).uploadBinary(
+      response = await _client.storage
+          .from(bucket)
+          .uploadBinary(
             path,
             file,
-            fileOptions: const FileOptions(
-              cacheControl: '3600',
-              upsert: false,
-            ),
+            fileOptions: const FileOptions(cacheControl: '3600', upsert: false),
           );
     } else {
       throw ArgumentError('Unsupported file type for upload');
@@ -381,7 +447,8 @@ class SupabaseService {
     final response = await _client
         .from('chat_rooms')
         .select(
-            '*, patient:users!chat_rooms_patient_id_fkey(id, name, avatar_url), doctor:users!chat_rooms_doctor_id_fkey(id, name, avatar_url)')
+          '*, patient:users!chat_rooms_patient_id_fkey(id, name, avatar_url), doctor:users!chat_rooms_doctor_id_fkey(id, name, avatar_url)',
+        )
         .eq(field, userId)
         .order('last_message_time', ascending: false);
 
@@ -437,14 +504,20 @@ class SupabaseService {
         .single();
 
     // Update chat room with last message
-    await _client.from('chat_rooms').update({
-      'last_message': message.message,
-      'last_message_time': message.timestamp.toIso8601String(),
-      'unread_count': _client.rpc('increment_unread_count', params: {
-        'room_id': message.chatRoomId,
-        'user_id': message.receiverId,
-      }),
-    }).eq('id', message.chatRoomId);
+    await _client
+        .from('chat_rooms')
+        .update({
+          'last_message': message.message,
+          'last_message_time': message.timestamp.toIso8601String(),
+          'unread_count': _client.rpc(
+            'increment_unread_count',
+            params: {
+              'room_id': message.chatRoomId,
+              'user_id': message.receiverId,
+            },
+          ),
+        })
+        .eq('id', message.chatRoomId);
 
     return ChatModel.fromJson(response);
   }
@@ -461,11 +534,14 @@ class SupabaseService {
     // Reset unread count
     await _client
         .from('chat_rooms')
-        .update({'unread_count': 0}).eq('id', chatRoomId);
+        .update({'unread_count': 0})
+        .eq('id', chatRoomId);
   }
 
   Future<ChatRoomModel> createChatRoom(
-      String patientId, String doctorId) async {
+    String patientId,
+    String doctorId,
+  ) async {
     // Get patient and doctor info
     final patientData = await _client
         .from('users')
@@ -508,11 +584,7 @@ class SupabaseService {
   void subscribeToChatMessages(Function(ChatModel) onMessageReceived) {
     _client.channel('public:chat_messages').on(
       RealtimeListenTypes.postgresChanges,
-      ChannelFilter(
-        event: 'INSERT',
-        schema: 'public',
-        table: 'chat_messages',
-      ),
+      ChannelFilter(event: 'INSERT', schema: 'public', table: 'chat_messages'),
       (payload, [ref]) {
         final message = ChatModel.fromJson(payload['new']);
         onMessageReceived(message);
@@ -576,7 +648,8 @@ class SupabaseService {
 
   // Medical Records methods
   Future<List<MedicalRecordModel>> getPatientMedicalRecords(
-      String patientId) async {
+    String patientId,
+  ) async {
     try {
       final response = await _client
           .from('medical_records')
@@ -586,7 +659,8 @@ class SupabaseService {
 
       return response
           .map<MedicalRecordModel>(
-              (record) => MedicalRecordModel.fromJson(record))
+            (record) => MedicalRecordModel.fromJson(record),
+          )
           .toList();
     } catch (e) {
       print('Error getting patient medical records: $e');
@@ -595,7 +669,9 @@ class SupabaseService {
   }
 
   Future<String?> uploadMedicalRecordFile(
-      dynamic fileData, String fileName) async {
+    dynamic fileData,
+    String fileName,
+  ) async {
     try {
       final fileExtension = fileName.split('.').last;
       final fileKey = '${DateTime.now().millisecondsSinceEpoch}.$fileExtension';
@@ -603,7 +679,9 @@ class SupabaseService {
       if (fileData is String) {
         // Native platforms: we receive a file path, read bytes and upload binary
         final Uint8List bytes = await io.File(fileData).readAsBytes();
-        await _client.storage.from('medical_records').uploadBinary(
+        await _client.storage
+            .from('medical_records')
+            .uploadBinary(
               fileKey,
               bytes,
               fileOptions: const FileOptions(
@@ -613,7 +691,9 @@ class SupabaseService {
             );
       } else if (fileData is Uint8List) {
         // Web platforms: we receive binary data directly
-        await _client.storage.from('medical_records').uploadBinary(
+        await _client.storage
+            .from('medical_records')
+            .uploadBinary(
               fileKey,
               fileData,
               fileOptions: const FileOptions(
@@ -625,8 +705,9 @@ class SupabaseService {
         throw ArgumentError('Unsupported file data type');
       }
 
-      final fileUrl =
-          _client.storage.from('medical_records').getPublicUrl(fileKey);
+      final fileUrl = _client.storage
+          .from('medical_records')
+          .getPublicUrl(fileKey);
       return fileUrl;
     } catch (e) {
       print('Error uploading medical record file: $e');
@@ -673,7 +754,8 @@ class SupabaseService {
 
       return response
           .map<NotificationModel>(
-              (notification) => NotificationModel.fromJson(notification))
+            (notification) => NotificationModel.fromJson(notification),
+          )
           .toList();
     } catch (e) {
       print('Error getting user notifications: $e');
@@ -701,12 +783,15 @@ class SupabaseService {
 
   Future<List<PaymentMethodModel>> getUserPaymentMethods(String userId) async {
     try {
-      final response =
-          await _client.from('payment_methods').select().eq('user_id', userId);
+      final response = await _client
+          .from('payment_methods')
+          .select()
+          .eq('user_id', userId);
 
       return response
           .map<PaymentMethodModel>(
-              (method) => PaymentMethodModel.fromJson(method))
+            (method) => PaymentMethodModel.fromJson(method),
+          )
           .toList();
     } catch (e) {
       print('Error getting payment methods: $e');
@@ -716,8 +801,11 @@ class SupabaseService {
 
   Future<PaymentMethodModel> addPaymentMethod(PaymentMethodModel method) async {
     final data = method.toJson();
-    final response =
-        await _client.from('payment_methods').insert(data).select().single();
+    final response = await _client
+        .from('payment_methods')
+        .insert(data)
+        .select()
+        .single();
     return PaymentMethodModel.fromJson(response);
   }
 
@@ -729,12 +817,14 @@ class SupabaseService {
     // First, set all methods to non-default
     await _client
         .from('payment_methods')
-        .update({'is_default': false}).eq('user_id', userId);
+        .update({'is_default': false})
+        .eq('user_id', userId);
 
     // Then set the selected method as default
     await _client
         .from('payment_methods')
-        .update({'is_default': true}).eq('id', methodId);
+        .update({'is_default': true})
+        .eq('id', methodId);
   }
 
   Future<PaymentModel> processPayment({
@@ -756,8 +846,11 @@ class SupabaseService {
       'transaction_id': 'txn_${DateTime.now().millisecondsSinceEpoch}',
     };
 
-    final response =
-        await _client.from('payments').insert(payment).select().single();
+    final response = await _client
+        .from('payments')
+        .insert(payment)
+        .select()
+        .single();
     return PaymentModel.fromJson(response);
   }
 
@@ -765,7 +858,8 @@ class SupabaseService {
     try {
       await _client
           .from('notifications')
-          .update({'is_read': true}).eq('id', notificationId);
+          .update({'is_read': true})
+          .eq('id', notificationId);
       return true;
     } catch (e) {
       print('Error marking notification as read: $e');
@@ -795,7 +889,8 @@ class SupabaseService {
 
   // Medication Reminder methods
   Future<List<MedicationReminderModel>> getUserMedicationReminders(
-      String userId) async {
+    String userId,
+  ) async {
     try {
       final response = await _client
           .from('medication_reminders')
@@ -805,7 +900,8 @@ class SupabaseService {
 
       return response
           .map<MedicationReminderModel>(
-              (reminder) => MedicationReminderModel.fromJson(reminder))
+            (reminder) => MedicationReminderModel.fromJson(reminder),
+          )
           .toList();
     } catch (e) {
       print('Error getting user medication reminders: $e');
@@ -814,7 +910,8 @@ class SupabaseService {
   }
 
   Future<bool> createMedicationReminder(
-      MedicationReminderModel reminder) async {
+    MedicationReminderModel reminder,
+  ) async {
     try {
       await _client.from('medication_reminders').insert(reminder.toJson());
       return true;
@@ -825,7 +922,8 @@ class SupabaseService {
   }
 
   Future<bool> updateMedicationReminder(
-      MedicationReminderModel reminder) async {
+    MedicationReminderModel reminder,
+  ) async {
     try {
       await _client
           .from('medication_reminders')
