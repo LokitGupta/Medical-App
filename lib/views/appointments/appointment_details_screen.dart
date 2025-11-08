@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:medical_app/models/appointment_model.dart';
 import 'package:medical_app/providers/appointment_provider.dart';
 import 'package:medical_app/providers/auth_provider.dart';
+import 'package:medical_app/providers/chat_provider.dart';
 import 'package:medical_app/widgets/custom_button.dart';
 
 class AppointmentDetailsScreen extends ConsumerWidget {
@@ -710,9 +711,43 @@ class AppointmentDetailsScreen extends ConsumerWidget {
                   ListTile(
                     leading: const Icon(Icons.chat, color: Colors.green),
                     title: const Text('Start Chat'),
-                    onTap: () {
+                    onTap: () async {
+                      // Close the bottom sheet
                       Navigator.pop(context);
-                      context.go('/chat/${appointment.id}');
+
+                      // Ensure we have the current user and role
+                      final authState = ref.read(authProvider);
+                      final currentUser = authState.user;
+                      if (currentUser == null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                              content: Text('Please sign in to start chat')),
+                        );
+                        return;
+                      }
+
+                      final isDoctor = currentUser.role == 'doctor';
+
+                      // Load chat rooms so we don't create duplicates
+                      await ref
+                          .read(chatProvider.notifier)
+                          .getChatRooms(currentUser.id, isDoctor);
+
+                      // Create or reuse a chat room for this patient-doctor pair
+                      final chatRoomId = await ref
+                          .read(chatProvider.notifier)
+                          .createChatRoom(
+                              appointment.patientId, appointment.doctorId);
+
+                      if (chatRoomId != null) {
+                        context.go('/chat/$chatRoomId');
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                              content: Text(
+                                  'Unable to open chat for this appointment')),
+                        );
+                      }
                     },
                   ),
                 if (isDoctor && appointment.status == 'completed')

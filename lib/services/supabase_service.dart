@@ -84,33 +84,12 @@ class SupabaseService {
     String? profileImageFileName,
   }) async {
     try {
-      final userId = _supabase.auth.currentUser!.id;
-      String? idProofUrl;
       String? profileImageUrl;
 
-      // Upload ID proof if it exists
-      if (idProofBytes != null && idProofFileName != null) {
-        final idProofPath = '/$userId/documents/$idProofFileName';
-        await _supabase.storage
-            .from('user_documents')
-            .uploadBinary(
-              idProofPath,
-              idProofBytes,
-              fileOptions: const FileOptions(
-                cacheControl: '3600',
-                upsert: false,
-              ),
-            );
-        idProofUrl = _supabase.storage
-            .from('user_documents')
-            .getPublicUrl(idProofPath);
-      }
-
-      // Upload profile image if it exists
+      // Upload profile image if provided
       if (profileImageBytes != null && profileImageFileName != null) {
-        final profileImagePath =
-            '/$userId/profile_images/$profileImageFileName';
-        await _supabase.storage
+        final profileImagePath = '$userId/$profileImageFileName';
+        await _client.storage
             .from('profile_images')
             .uploadBinary(
               profileImagePath,
@@ -120,7 +99,7 @@ class SupabaseService {
                 upsert: false,
               ),
             );
-        profileImageUrl = _supabase.storage
+        profileImageUrl = _client.storage
             .from('profile_images')
             .getPublicUrl(profileImagePath);
       }
@@ -128,6 +107,7 @@ class SupabaseService {
       final data = {
         'id': userId,
         'name': name,
+        'email': email,
         'role': role,
         'phone': phone,
         'age': age,
@@ -145,6 +125,12 @@ class SupabaseService {
           'id_proof_url': idProofUrl,
           'doctor_verification_status': 'pending',
         });
+      }
+
+      // Add emergency contacts to data for patients
+      if (role == 'patient') {
+        data['emergency_contact_1'] = emergencyContact1;
+        data['emergency_contact_2'] = emergencyContact2;
       }
 
       await _client.from('users').insert(data);
@@ -190,6 +176,12 @@ class SupabaseService {
         'id_proof_url': updatedUser.idProofUrl,
         'doctor_verification_status': updatedUser.doctorVerificationStatus,
       });
+    }
+
+    // Add emergency contacts for patients
+    if (updatedUser.role == 'patient') {
+      data['emergency_contact_1'] = updatedUser.emergencyContact1;
+      data['emergency_contact_2'] = updatedUser.emergencyContact2;
     }
 
     await _client.from('users').update(data).eq('id', updatedUser.id);
@@ -629,6 +621,20 @@ class SupabaseService {
       'phone': phone,
       'relationship': relationship,
     });
+  }
+
+  Future<List<Map<String, dynamic>>> getEmergencyContacts(String userId) async {
+    try {
+      final response = await _client
+          .from('emergency_contacts')
+          .select()
+          .eq('user_id', userId);
+      
+      return List<Map<String, dynamic>>.from(response);
+    } catch (e) {
+      print('Error getting emergency contacts: $e');
+      return [];
+    }
   }
 
   // Insurance methods

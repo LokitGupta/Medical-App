@@ -13,6 +13,8 @@ class UserModel {
   final double? consultationFee;
   final String? doctorVerificationStatus; // 'pending' | 'approved' | 'rejected'
   final String? idProofUrl;
+  final String? emergencyContact1;
+  final String? emergencyContact2;
   final DateTime createdAt;
 
   UserModel({
@@ -30,6 +32,8 @@ class UserModel {
     this.consultationFee,
     this.doctorVerificationStatus,
     this.idProofUrl,
+    this.emergencyContact1,
+    this.emergencyContact2,
     required this.createdAt,
   });
 
@@ -48,6 +52,8 @@ class UserModel {
     double? consultationFee,
     String? doctorVerificationStatus,
     String? idProofUrl,
+    String? emergencyContact1,
+    String? emergencyContact2,
     DateTime? createdAt,
   }) {
     return UserModel(
@@ -66,6 +72,8 @@ class UserModel {
       doctorVerificationStatus:
           doctorVerificationStatus ?? this.doctorVerificationStatus,
       idProofUrl: idProofUrl ?? this.idProofUrl,
+      emergencyContact1: emergencyContact1 ?? this.emergencyContact1,
+      emergencyContact2: emergencyContact2 ?? this.emergencyContact2,
       createdAt: createdAt ?? this.createdAt,
     );
   }
@@ -99,6 +107,8 @@ class UserModel {
               : (json['consultation_fee'] as double?),
       doctorVerificationStatus: json['doctor_verification_status'],
       idProofUrl: json['id_proof_url'],
+      emergencyContact1: json['emergency_contact_1'],
+      emergencyContact2: json['emergency_contact_2'],
       createdAt: DateTime.tryParse(json['created_at'] ?? '') ?? DateTime.now(),
     );
   }
@@ -120,6 +130,8 @@ class UserModel {
       if (doctorVerificationStatus != null)
         'doctor_verification_status': doctorVerificationStatus,
       if (idProofUrl != null) 'id_proof_url': idProofUrl,
+      if (emergencyContact1 != null) 'emergency_contact_1': emergencyContact1,
+      if (emergencyContact2 != null) 'emergency_contact_2': emergencyContact2,
       'created_at': createdAt.toIso8601String(),
     };
   }

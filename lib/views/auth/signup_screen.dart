@@ -313,77 +313,6 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                 const SizedBox(height: 16),
 
                 // --- Patient Specific Fields: Emergency Contacts ---
-                if (_selectedRole == 'patient') ...[
-                  const Text(
-                    'Emergency Contacts',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 16),
-                        decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey.shade400),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child:
-                            const Text('+91', style: TextStyle(fontSize: 16)),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: CustomTextField(
-                          controller: _emergencyContact1Controller,
-                          labelText: 'Emergency Contact 1',
-                          hintText: '10-digit mobile number',
-                          keyboardType: TextInputType.phone,
-                          validator: (value) {
-                            if (_selectedRole == 'patient') {
-                              return _validatePhone(value);
-                            }
-                            return null;
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 16),
-                        decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey.shade400),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child:
-                            const Text('+91', style: TextStyle(fontSize: 16)),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: CustomTextField(
-                          controller: _emergencyContact2Controller,
-                          labelText: 'Emergency Contact 2 (Optional)',
-                          hintText: '10-digit mobile number',
-                          keyboardType: TextInputType.phone,
-                          validator: (value) {
-                            if (_selectedRole == 'patient' &&
-                                value != null &&
-                                value.trim().isNotEmpty) {
-                              return _validatePhone(value);
-                            }
-                            return null;
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                ],
 
                 // --- Doctor Specific Fields ---
                 if (_selectedRole == 'doctor') ...[
@@ -547,11 +476,16 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                         value: _selectedGender,
                         items: const [
                           DropdownMenuItem(value: 'Male', child: Text('Male')),
-                          DropdownMenuItem(value: 'Female', child: Text('Female')),
-                          DropdownMenuItem(value: 'Other', child: Text('Other')),
-                          DropdownMenuItem(value: 'Prefer not to say', child: Text('Prefer not to say')),
+                          DropdownMenuItem(
+                              value: 'Female', child: Text('Female')),
+                          DropdownMenuItem(
+                              value: 'Other', child: Text('Other')),
+                          DropdownMenuItem(
+                              value: 'Prefer not to say',
+                              child: Text('Prefer not to say')),
                         ],
-                        onChanged: (val) => setState(() => _selectedGender = val),
+                        onChanged: (val) =>
+                            setState(() => _selectedGender = val),
                         validator: (value) {
                           if (value == null || value.isEmpty) {
                             return 'Please select gender';
@@ -563,6 +497,78 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                   ],
                 ),
                 const SizedBox(height: 16),
+
+                if (_selectedRole == 'patient') ...[
+                  const Text(
+                    'Emergency Contacts',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 16),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey.shade400),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child:
+                            const Text('+91', style: TextStyle(fontSize: 16)),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: CustomTextField(
+                          controller: _emergencyContact1Controller,
+                          labelText: 'Emergency Contact 1',
+                          hintText: '10-digit mobile number',
+                          keyboardType: TextInputType.phone,
+                          validator: (value) {
+                            if (_selectedRole == 'patient') {
+                              return _validatePhone(value);
+                            }
+                            return null;
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 16),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey.shade400),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child:
+                            const Text('+91', style: TextStyle(fontSize: 16)),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: CustomTextField(
+                          controller: _emergencyContact2Controller,
+                          labelText: 'Emergency Contact 2 (Optional)',
+                          hintText: '10-digit mobile number',
+                          keyboardType: TextInputType.phone,
+                          validator: (value) {
+                            if (_selectedRole == 'patient' &&
+                                value != null &&
+                                value.trim().isNotEmpty) {
+                              return _validatePhone(value);
+                            }
+                            return null;
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                ],
 
                 // --- Doctor-only fields below identification and common fields ---
                 if (_selectedRole == 'doctor') ...[
@@ -582,7 +588,8 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                     items: _specialties
                         .map((s) => DropdownMenuItem(value: s, child: Text(s)))
                         .toList(),
-                    onChanged: (val) => setState(() => _selectedSpecialty = val),
+                    onChanged: (val) =>
+                        setState(() => _selectedSpecialty = val),
                     validator: (value) {
                       if (_selectedRole == 'doctor' &&
                           (value == null || value.isEmpty)) {
