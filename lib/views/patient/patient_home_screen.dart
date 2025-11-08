@@ -235,90 +235,21 @@ class PatientHomeScreen extends ConsumerWidget {
                   'Emergency',
                   Icons.emergency,
                   Colors.red,
-                  () => _showEmergencyOptions(context),
+                  () => _showEmergencyOptions(context, user),
                 ),
               ],
-            ),
-
-            const SizedBox(height: 24),
-
-            // Upcoming Appointments
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Upcoming Appointments',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                TextButton(
-                  onPressed: () => context.go('/appointments'),
-                  child: const Text('See All'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            _buildUpcomingAppointment(
-              context,
-              'Dr. Sarah Johnson',
-              'Cardiologist',
-              'Tomorrow, 10:00 AM',
-              () => context.go('/appointments/1'),
-            ),
-            const SizedBox(height: 8),
-            _buildUpcomingAppointment(
-              context,
-              'Dr. Michael Chen',
-              'Dermatologist',
-              'Friday, 2:30 PM',
-              () => context.go('/appointments/2'),
-            ),
-
-            const SizedBox(height: 24),
-
-            // Recent Prescriptions
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Recent Prescriptions',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                TextButton(
-                  onPressed: () => context.go('/records'),
-                  child: const Text('See All'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            _buildPrescriptionCard(
-              context,
-              'Dr. Sarah Johnson',
-              'Cardiologist',
-              'Issued: 15 May 2023',
-              () => context.go('/prescriptions/1'),
             ),
           ],
         ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => context.go('/appointments/new'),
-        child: const Icon(Icons.add),
-        tooltip: 'Book Appointment',
       ),
     );
   }
 
   // ------------------------------------
-  // 🔻 Emergency Bottom Sheet & Features
+  // 🚨 Emergency Bottom Sheet & Features
   // ------------------------------------
 
-  void _showEmergencyOptions(BuildContext context) {
+  void _showEmergencyOptions(BuildContext context, dynamic user) {
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -336,7 +267,7 @@ class PatientHomeScreen extends ConsumerWidget {
             const SizedBox(height: 16),
             ListTile(
               leading: const Icon(Icons.local_hospital, color: Colors.red),
-              title: const Text('Call Ambulance'),
+              title: const Text('Call Ambulance (102)'),
               onTap: () {
                 Navigator.pop(context);
                 _handleEmergencyCall(context);
@@ -344,7 +275,7 @@ class PatientHomeScreen extends ConsumerWidget {
             ),
             ListTile(
               leading: const Icon(Icons.location_on, color: Colors.orange),
-              title: const Text('Share Location'),
+              title: const Text('Share Location & Nearby Hospitals'),
               onTap: () {
                 Navigator.pop(context);
                 _shareLocation(context);
@@ -352,10 +283,10 @@ class PatientHomeScreen extends ConsumerWidget {
             ),
             ListTile(
               leading: const Icon(Icons.contact_phone, color: Colors.blue),
-              title: const Text('Inform Emergency Contact'),
+              title: const Text('Inform Emergency Contacts'),
               onTap: () {
                 Navigator.pop(context);
-                _contactEmergencyPerson(context);
+                _contactEmergencyPerson(context, user);
               },
             ),
           ],
@@ -364,8 +295,9 @@ class PatientHomeScreen extends ConsumerWidget {
     );
   }
 
+  /// 🚑 Call Ambulance (102)
   void _handleEmergencyCall(BuildContext context) async {
-    const emergencyNumber = 'tel:911'; // Change for your region
+    const emergencyNumber = 'tel:102';
     final uri = Uri.parse(emergencyNumber);
 
     if (await canLaunchUrl(uri)) {
@@ -377,6 +309,7 @@ class PatientHomeScreen extends ConsumerWidget {
     }
   }
 
+  /// 📍 Share current location and show nearby hospitals
   Future<void> _shareLocation(BuildContext context) async {
     bool serviceEnabled;
     LocationPermission permission;
@@ -411,48 +344,70 @@ class PatientHomeScreen extends ConsumerWidget {
       desiredAccuracy: LocationAccuracy.high,
     );
 
-    String locationLink =
-        'https://maps.google.com/?q=${position.latitude},${position.longitude}';
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Location shared: $locationLink')),
-    );
-  }
+    String mapsUrl =
+        'https://www.google.com/maps/search/hospitals/@${position.latitude},${position.longitude},14z';
+    String locationMessage =
+        'Emergency! Please send help to my location: https://maps.google.com/?q=${position.latitude},${position.longitude}';
 
-  Future<void> _contactEmergencyPerson(BuildContext context) async {
-    const contactNumber = '+15551234567'; // Replace with saved contact
-    String message = 'Emergency! Please contact me immediately. I need help!';
-
+    // Send location via SMS to 102
     try {
-      await sendSMS(message: message, recipients: [contactNumber]);
+      await sendSMS(message: locationMessage, recipients: ['102']);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Emergency SMS sent successfully')),
+        const SnackBar(content: Text('Location sent to Ambulance (102)')),
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to send message: $e')),
+        SnackBar(content: Text('Failed to send SMS: $e')),
+      );
+    }
+
+    // Open Google Maps for nearby hospitals
+    final Uri mapsUri = Uri.parse(mapsUrl);
+    if (await canLaunchUrl(mapsUri)) {
+      await launchUrl(mapsUri);
+    }
+  }
+
+  /// 📲 Inform emergency contacts
+  Future<void> _contactEmergencyPerson(
+      BuildContext context, dynamic user) async {
+    List<String> emergencyContacts = ['+911234567890']; // default
+
+    try {
+      final contacts = user?.emergencyContacts;
+      if (contacts != null) {
+        if (contacts is List) {
+          emergencyContacts = contacts.map((c) => c.toString()).toList();
+        } else if (contacts is String) {
+          // handle comma-separated string case
+          emergencyContacts = contacts.split(',').map((c) => c.trim()).toList();
+        }
+      }
+
+      String message = 'Need medical help! Please reach out immediately.';
+
+      await sendSMS(message: message, recipients: emergencyContacts);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Emergency contacts notified')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to notify contacts: $e')),
       );
     }
   }
 
   // ------------------------------------
-  // 🔹 Other UI helper widgets
+  // 🔹 Helper UI Components
   // ------------------------------------
-
-  Widget _buildActionCard(
-    BuildContext context,
-    String title,
-    IconData icon,
-    Color color,
-    VoidCallback onTap,
-  ) {
+  Widget _buildActionCard(BuildContext context, String title, IconData icon,
+      Color color, VoidCallback onTap) {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
       child: Card(
         elevation: 4,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(
@@ -460,152 +415,10 @@ class PatientHomeScreen extends ConsumerWidget {
             children: [
               Icon(icon, size: 40, color: color),
               const SizedBox(height: 12),
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildUpcomingAppointment(
-    BuildContext context,
-    String doctorName,
-    String specialty,
-    String dateTime,
-    VoidCallback onTap,
-  ) {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Row(
-            children: [
-              CircleAvatar(
-                radius: 25,
-                backgroundColor: Colors.blue.shade100,
-                child: const Icon(Icons.person, color: Colors.blue),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      doctorName,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Text(
-                      specialty,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        const Icon(Icons.access_time,
-                            size: 14, color: Colors.blue),
-                        const SizedBox(width: 4),
-                        Text(
-                          dateTime,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            color: Colors.blue,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              const Icon(Icons.chevron_right),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPrescriptionCard(
-    BuildContext context,
-    String doctorName,
-    String specialty,
-    String date,
-    VoidCallback onTap,
-  ) {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: Colors.green.shade100,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(
-                  Icons.description,
-                  color: Colors.green,
-                  size: 30,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      doctorName,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Text(
-                      specialty,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      date,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const Icon(Icons.chevron_right),
+              Text(title,
+                  style: const TextStyle(
+                      fontSize: 16, fontWeight: FontWeight.bold),
+                  textAlign: TextAlign.center),
             ],
           ),
         ),
