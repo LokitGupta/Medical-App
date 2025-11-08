@@ -31,7 +31,8 @@ class _DoctorHomeScreenState extends ConsumerState<DoctorHomeScreen> {
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
     final user = authState.user;
-    final String verificationStatus = (user?.doctorVerificationStatus ?? 'pending').toLowerCase();
+    final String verificationStatus =
+        (user?.doctorVerificationStatus ?? 'pending').toLowerCase();
     final bool isApproved = verificationStatus == 'approved';
     final appointmentState = ref.watch(appointmentProvider);
     final pendingAppointments = appointmentState.appointments
@@ -40,7 +41,14 @@ class _DoctorHomeScreenState extends ConsumerState<DoctorHomeScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('MedApp - Doctor'),
+        title: const Text(
+          'CareBridge',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF0D47A1),
+            fontSize: 24,
+          ),
+        ),
         actions: [
           const NotificationBadge(),
           IconButton(
@@ -231,7 +239,7 @@ class _DoctorHomeScreenState extends ConsumerState<DoctorHomeScreen> {
                   'Patient Chats',
                   Icons.chat,
                   Colors.purple,
-                  () => context.go('/chats'),
+                  () => context.push('/chats'),
                   enabled: isApproved,
                 ),
                 _buildActionCard(
@@ -310,14 +318,9 @@ class _DoctorHomeScreenState extends ConsumerState<DoctorHomeScreen> {
     );
   }
 
-  Widget _buildActionCard(
-    BuildContext context,
-    String title,
-    IconData icon,
-    Color color,
-    VoidCallback onTap,
-    {bool enabled = true}
-  ) {
+  Widget _buildActionCard(BuildContext context, String title, IconData icon,
+      Color color, VoidCallback onTap,
+      {bool enabled = true}) {
     return InkWell(
       onTap: enabled ? onTap : null,
       borderRadius: BorderRadius.circular(12),
@@ -381,13 +384,15 @@ class _DoctorHomeScreenState extends ConsumerState<DoctorHomeScreen> {
         bg = Colors.red.shade50;
         fg = Colors.red.shade700;
         icon = Icons.error_outline;
-        message = 'Verification rejected. Please resubmit documents or contact support.';
+        message =
+            'Verification rejected. Please resubmit documents or contact support.';
         break;
       default:
         bg = Colors.orange.shade50;
         fg = Colors.orange.shade700;
         icon = Icons.hourglass_top;
-        message = 'Verification pending. Some actions are disabled until approval.';
+        message =
+            'Verification pending. Some actions are disabled until approval.';
     }
 
     return Card(
@@ -403,7 +408,8 @@ class _DoctorHomeScreenState extends ConsumerState<DoctorHomeScreen> {
             Expanded(
               child: Text(
                 message,
-                style: TextStyle(color: fg, fontSize: 14, fontWeight: FontWeight.w600),
+                style: TextStyle(
+                    color: fg, fontSize: 14, fontWeight: FontWeight.w600),
               ),
             ),
             if (status == 'rejected')

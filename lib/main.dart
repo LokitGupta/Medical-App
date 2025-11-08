@@ -48,6 +48,7 @@ class MedicalApp extends ConsumerWidget {
 
     return MaterialApp.router(
       title: 'CareBridge',
+      debugShowCheckedModeBanner: false, // ✅ Hides the DEBUG banner
       locale: languageState.locale,
       localizationsDelegates: [
         app_localizations.AppLocalizations.delegate,
@@ -57,18 +58,18 @@ class MedicalApp extends ConsumerWidget {
       ],
       supportedLocales: app_localizations.AppLocalizations.supportedLocales,
       theme: ThemeData(
-        primarySwatch: Colors.indigo, // Matches dark blue tone
-        primaryColor: const Color(0xFF0D47A1), // Deep Dark Blue
+        primarySwatch: Colors.indigo,
+        primaryColor: const Color(0xFF0D47A1),
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF0D47A1), // Core brand color
-          secondary: const Color(0xFF1565C0), // Slightly lighter blue
+          seedColor: const Color(0xFF0D47A1),
+          secondary: const Color(0xFF1565C0),
         ),
         textTheme: const TextTheme(
           headlineLarge: TextStyle(
             fontFamily: 'Roboto',
             fontSize: 32,
             fontWeight: FontWeight.bold,
-            color: Color(0xFF0D47A1), // Dark Blue for main titles
+            color: Color(0xFF0D47A1),
           ),
           headlineMedium: TextStyle(
             fontFamily: 'Roboto',
