@@ -100,6 +100,7 @@ class PaymentNotifier extends StateNotifier<PaymentState> {
       final newMethod = await _supabaseService.addPaymentMethod(method);
       final updatedMethods = [...state.paymentMethods, newMethod];
       state = state.copyWith(paymentMethods: updatedMethods, isLoading: false);
+      await getUserPaymentMethods();
     } catch (e) {
       state = state.copyWith(
         isLoading: false,

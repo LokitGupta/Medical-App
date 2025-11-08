@@ -697,6 +697,16 @@ class SupabaseService {
     }
   }
 
+  Future<void> deleteMedicalRecordFile(String fileUrl) async {
+    try {
+      final fileKey = fileUrl.split('/').last;
+      await _client.storage.from('medical_records').remove([fileKey]);
+    } catch (e) {
+      print('Error deleting medical record file: $e');
+      // Non-fatal, as the primary record deletion succeeded.
+    }
+  }
+
   Future<bool> createMedicalRecord(MedicalRecordModel record) async {
     try {
       await _client.from('medical_records').insert(record.toJson());

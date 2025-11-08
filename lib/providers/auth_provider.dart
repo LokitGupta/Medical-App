@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dart:typed_data';
 import 'package:medical_app/models/user_model.dart';
 import 'package:medical_app/services/supabase_service.dart';
+import 'package:medical_app/providers/supabase_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' hide Provider;
 
@@ -349,8 +350,4 @@ class AuthNotifier extends StateNotifier<AuthState> {
 final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
   final supabaseService = ref.watch(supabaseServiceProvider);
   return AuthNotifier(supabaseService);
-});
-
-final supabaseServiceProvider = Provider<SupabaseService>((ref) {
-  return SupabaseService();
 });

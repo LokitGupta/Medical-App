@@ -499,7 +499,7 @@ class AppointmentDetailsScreen extends ConsumerWidget {
                                     text: 'Pay Now',
                                     onPressed: () {
                                       context.go(
-                                          '/payments/checkout?appointmentId=${appointment.id}');
+                                          '/payments/checkout?appointmentId=${appointment.id}&referenceId=${appointment.id}&paymentType=appointment&amount=${appointment.fee}');
                                     },
                                   ),
                                 ),
@@ -762,12 +762,12 @@ class AppointmentDetailsScreen extends ConsumerWidget {
                 if (isDoctor && appointment.status == 'completed')
                   ListTile(
                     leading:
-                        const Icon(Icons.upload_file, color: Colors.purple),
-                    title: const Text('Upload Prescription'),
+                        const Icon(Icons.edit_document, color: Colors.green),
+                    title: const Text('Write Prescription'),
                     onTap: () {
                       Navigator.pop(context);
                       context.go(
-                          '/records/upload?appointmentId=${appointment.id}');
+                          '/prescriptions/create/${appointment.id}');
                     },
                   ),
                 if (!isDoctor && appointment.status == 'completed')

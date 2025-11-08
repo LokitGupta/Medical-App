@@ -328,6 +328,7 @@ class _PaymentMethodsScreenState extends ConsumerState<PaymentMethodsScreen> {
 
       final currentUser = await ref.read(supabaseServiceProvider).getCurrentUser();
       if (currentUser == null) {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('User not authenticated')),
         );
@@ -342,7 +343,9 @@ class _PaymentMethodsScreenState extends ConsumerState<PaymentMethodsScreen> {
       String? month;
       String? year;
       final expiryText = _expiryController.text.trim();
-      final match = RegExp(r'^(\d{2})\/(\d{2})$').firstMatch(expiryText);
+      final expiryPattern = r'^(\d{2})\/(\d{2})$';
+      final expiryRegex = RegExp(expiryPattern);
+      final match = expiryRegex.firstMatch(expiryText);
       if (match != null) {
         month = match.group(1);
         final yy = match.group(2);
@@ -361,9 +364,13 @@ class _PaymentMethodsScreenState extends ConsumerState<PaymentMethodsScreen> {
 
       await ref.read(paymentProvider.notifier).addPaymentMethod(newMethod);
 
-      if (mounted) {
-        Navigator.pop(context);
-      }
+      // Check if widget is still mounted before using context
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Payment method added successfully')),
+      );
+      Navigator.pop(context);
 
       // Reset form
       _cardNumberController.clear();

@@ -51,16 +51,20 @@ class MedicalRecordNotifier extends StateNotifier<MedicalRecordState> {
     }
   }
 
-  Future<bool> uploadMedicalRecord(MedicalRecordModel record, String filePath) async {
+  Future<bool> uploadMedicalRecord(
+    MedicalRecordModel record,
+    dynamic fileData,
+    String fileName,
+  ) async {
     state = state.copyWith(isUploading: true, error: null);
+    String? fileUrl;
     try {
-      // First upload the file
-      final fileName = filePath.split(RegExp(r'[\\/]')).last;
-      final fileUrl = await _supabaseService.uploadMedicalRecordFile(filePath, fileName);
+      // First upload the file (supports web bytes or native path)
+      fileUrl = await _supabaseService.uploadMedicalRecordFile(fileData, fileName);
       if (fileUrl == null) {
-        throw Exception('Failed to upload medical record file');
+        throw Exception('File URL was null after upload.');
       }
-      
+
       // Create the record with the file URL
       final recordWithUrl = MedicalRecordModel(
         patientId: record.patientId,
@@ -73,24 +77,30 @@ class MedicalRecordNotifier extends StateNotifier<MedicalRecordState> {
         description: record.description,
         createdAt: record.createdAt,
       );
-      
+
       // Save the record to the database
       final created = await _supabaseService.createMedicalRecord(recordWithUrl);
-      
+
       if (created) {
         state = state.copyWith(
           records: [...state.records, recordWithUrl],
           isUploading: false,
         );
+        return true;
       } else {
-        state = state.copyWith(isUploading: false, error: 'Failed to save medical record');
-        return false;
+        // If creation fails, try to delete the orphaned file
+        await _supabaseService.deleteMedicalRecordFile(fileUrl);
+        throw Exception('Failed to save record metadata to the database.');
       }
-      return true;
     } catch (e) {
+      // If fileUrl is not null, it means the file was uploaded but the DB record failed.
+      // Attempt to delete the orphaned file.
+      if (fileUrl != null) {
+        await _supabaseService.deleteMedicalRecordFile(fileUrl);
+      }
       state = state.copyWith(
         isUploading: false,
-        error: e.toString(),
+        error: 'Upload failed: ${e.toString()}',
       );
       return false;
     }

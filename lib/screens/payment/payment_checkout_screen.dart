@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:medical_app/models/payment_model.dart';
 import 'package:medical_app/providers/payment_provider.dart';
+import 'package:medical_app/providers/appointment_provider.dart';
 import 'package:medical_app/widgets/custom_app_bar.dart';
 
 class PaymentCheckoutScreen extends ConsumerStatefulWidget {
@@ -25,13 +26,26 @@ class PaymentCheckoutScreen extends ConsumerStatefulWidget {
 class _PaymentCheckoutScreenState extends ConsumerState<PaymentCheckoutScreen> {
   PaymentMethodModel? _selectedMethod;
   bool _isProcessing = false;
+  bool _isFirstLoad = true;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(paymentProvider.notifier).getUserPaymentMethods();
+      _isFirstLoad = false;
     });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Refresh payment methods when returning to this screen
+    if (!_isFirstLoad) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ref.read(paymentProvider.notifier).getUserPaymentMethods();
+      });
+    }
   }
 
   @override
@@ -46,7 +60,7 @@ class _PaymentCheckoutScreenState extends ConsumerState<PaymentCheckoutScreen> {
     }
 
     return Scaffold(
-      appBar: CustomAppBar(
+      appBar: const CustomAppBar(
         title: 'Checkout',
         showBackButton: true,
       ),
@@ -82,9 +96,20 @@ class _PaymentCheckoutScreenState extends ConsumerState<PaymentCheckoutScreen> {
                   const SizedBox(height: 24),
 
                   // Payment Method Selection
-                  Text(
-                    'Select Payment Method',
-                    style: Theme.of(context).textTheme.titleLarge,
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Select Payment Method',
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.refresh),
+                        onPressed: () {
+                          ref.read(paymentProvider.notifier).getUserPaymentMethods();
+                        },
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 16),
 
@@ -97,7 +122,14 @@ class _PaymentCheckoutScreenState extends ConsumerState<PaymentCheckoutScreen> {
                             const Text('No payment methods available'),
                             const SizedBox(height: 8),
                             ElevatedButton(
-                              onPressed: () => context.go('/payment-methods'),
+                              onPressed: () async {
+                                // Navigate to payment methods and refresh when returning
+                                await context.push('/payment-methods');
+                                // Refresh payment methods when returning
+                                if (mounted) {
+                                  ref.read(paymentProvider.notifier).getUserPaymentMethods();
+                                }
+                              },
                               child: const Text('Add Payment Method'),
                             ),
                           ],
@@ -111,7 +143,14 @@ class _PaymentCheckoutScreenState extends ConsumerState<PaymentCheckoutScreen> {
                             .map((method) => _buildPaymentMethodCard(method)),
                         const SizedBox(height: 8),
                         TextButton(
-                          onPressed: () => context.go('/payment-methods'),
+                          onPressed: () async {
+                            // Navigate to payment methods and refresh when returning
+                            await context.push('/payment-methods');
+                            // Refresh payment methods when returning
+                            if (mounted) {
+                              ref.read(paymentProvider.notifier).getUserPaymentMethods();
+                            }
+                          },
                           child: const Text('Manage Payment Methods'),
                         ),
                       ],
@@ -176,14 +215,8 @@ class _PaymentCheckoutScreenState extends ConsumerState<PaymentCheckoutScreen> {
           padding: const EdgeInsets.all(16.0),
           child: Row(
             children: [
-              Radio<String?>(
-                value: method.id,
-                groupValue: _selectedMethod?.id,
-                onChanged: (value) {
-                  setState(() {
-                    _selectedMethod = method;
-                  });
-                },
+              Radio<String>(
+                value: method.id!,
               ),
               const SizedBox(width: 8),
               Icon(_getMethodIcon(method.type)),
@@ -255,6 +288,14 @@ class _PaymentCheckoutScreenState extends ConsumerState<PaymentCheckoutScreen> {
             amount: widget.amount,
             paymentMethod: _selectedMethod!.id!,
           );
+
+      // Update appointment status to completed if this is an appointment payment
+      if (widget.paymentType == 'appointment') {
+        await ref.read(appointmentProvider.notifier).updateAppointmentStatus(
+          widget.referenceId,
+          'completed',
+        );
+      }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

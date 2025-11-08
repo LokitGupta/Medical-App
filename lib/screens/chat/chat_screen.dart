@@ -27,10 +27,31 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   void initState() {
     super.initState();
     _loadMessages();
+    _loadChatRoomData();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(chatProvider.notifier).subscribeToMessages(widget.chatRoom.id!);
     });
+  }
+
+  Future<void> _loadChatRoomData() async {
+    // If we have a temporary room (patientId is 'temp_patient'), 
+    // try to find the real room data from the chat rooms list
+    if (widget.chatRoom.patientId == 'temp_patient' || 
+        widget.chatRoom.doctorId == 'temp_doctor') {
+      final chatState = ref.read(chatProvider);
+      final realRoom = chatState.chatRooms.firstWhere(
+        (room) => room.id == widget.chatRoom.id,
+        orElse: () => widget.chatRoom,
+      );
+      
+      // If we found the real room, update the UI
+      if (realRoom.patientId != 'temp_patient' && realRoom.patientId.isNotEmpty) {
+        setState(() {
+          // The room data will be updated through the provider
+        });
+      }
+    }
   }
 
   @override

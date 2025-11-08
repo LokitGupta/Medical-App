@@ -1,7 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:medical_app/models/chat_model.dart';
-import 'package:medical_app/models/chat_room_model.dart';
-import 'package:medical_app/services/chat_service.dart';
+import 'package:medical_app/services/supabase_service.dart';
 
 class ChatState {
   final bool isLoading;
@@ -50,4 +49,9 @@ class ChatNotifier extends StateNotifier<ChatState> {
 
 final chatProvider = StateNotifierProvider<ChatNotifier, ChatState>((ref) {
   return ChatNotifier();
+});
+
+// Local provider for SupabaseService used by ChatNotifier
+final supabaseServiceProvider = Provider<SupabaseService>((ref) {
+  return SupabaseService();
 });

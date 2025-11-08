@@ -27,8 +27,7 @@ import 'package:medical_app/views/appointments/appointment_details_screen.dart';
 import 'package:medical_app/views/medical_records/medical_records_screen.dart';
 import 'package:medical_app/views/medical_records/upload_medical_record_screen.dart';
 import 'package:medical_app/views/prescriptions/prescription_details_screen.dart';
-
-// ✅ Symptom Checker
+import 'package:medical_app/views/prescriptions/create_prescription_screen.dart';
 import 'package:medical_app/views/symptom_checker/symptom_checker_screen.dart';
 import 'package:medical_app/views/symptom_checker/symptom_result_screen.dart';
 
@@ -174,7 +173,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/prescriptions/:id',
         builder: (context, state) {
           final id = state.pathParameters['id'] ?? '';
-          return PrescriptionDetailsScreen(prescriptionId: id);
+          return PrescriptionDetailsScreen(appointmentId: id);
+        },
+      ),
+
+      // Prescriptions - create (doctor)
+      GoRoute(
+        path: '/prescriptions/create/:appointmentId',
+        builder: (context, state) {
+          final id = state.pathParameters['appointmentId'] ?? '';
+          return CreatePrescriptionScreen(appointmentId: id);
         },
       ),
 
@@ -249,9 +257,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/payments/checkout',
         builder: (context, state) {
-          final appointmentId = state.uri.queryParameters['appointmentId'] ?? '';
-          final referenceId = state.uri.queryParameters['referenceId'] ?? appointmentId;
-          final paymentType = state.uri.queryParameters['paymentType'] ?? 'appointment';
+          final appointmentId =
+              state.uri.queryParameters['appointmentId'] ?? '';
+          final referenceId =
+              state.uri.queryParameters['referenceId'] ?? appointmentId;
+          final paymentType =
+              state.uri.queryParameters['paymentType'] ?? 'appointment';
           final amount =
               double.tryParse(state.uri.queryParameters['amount'] ?? '0') ??
                   0.0;

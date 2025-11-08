@@ -41,7 +41,16 @@ class _ChatRoomRouteState extends ConsumerState<ChatRoomRoute> {
   @override
   Widget build(BuildContext context) {
     final chatState = ref.watch(chatProvider);
-    final room = chatState.chatRooms.firstWhere(
+    
+    // If we haven't initialized yet, show loading
+    if (!_initialized) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    // Try to find the room in the loaded chat rooms
+    final existingRoom = chatState.chatRooms.firstWhere(
       (r) => r.id == widget.chatRoomId,
       orElse: () => ChatRoomModel(
         id: widget.chatRoomId,
@@ -51,14 +60,28 @@ class _ChatRoomRouteState extends ConsumerState<ChatRoomRoute> {
       ),
     );
 
-    // If we still haven’t loaded actual room data, show a loader
-    final hasRealData = room.patientId.isNotEmpty && room.doctorId.isNotEmpty;
-    if (!_initialized || (!hasRealData && chatState.isLoading)) {
+    // If the room exists in our loaded data, use it
+    if (existingRoom.patientId.isNotEmpty && existingRoom.doctorId.isNotEmpty) {
+      return ChatScreen(chatRoom: existingRoom);
+    }
+
+    // If we're still loading chat rooms (not messages), show loading
+    if (chatState.isLoading && chatState.messages.isEmpty) {
       return const Scaffold(
         body: Center(child: CircularProgressIndicator()),
       );
     }
 
-    return ChatScreen(chatRoom: room);
+    // If we've loaded all chat rooms and still can't find this one, 
+    // create a temporary room with the current chat room ID
+    // This allows the ChatScreen to load messages for this room
+    final tempRoom = ChatRoomModel(
+      id: widget.chatRoomId,
+      patientId: 'temp_patient', // Temporary values
+      doctorId: 'temp_doctor',    // Temporary values
+      lastMessageTime: DateTime.now(),
+    );
+
+    return ChatScreen(chatRoom: tempRoom);
   }
 }
