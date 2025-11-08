@@ -48,8 +48,17 @@ class _MedicationRemindersScreenState
     final error = notificationState.error;
 
     return Scaffold(
-      appBar: const CustomAppBar(
-        title: 'Medication Reminders',
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF0D47A1),
+        centerTitle: true,
+        title: const Text(
+          'Medication Reminders',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+          ),
+        ),
       ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -175,7 +184,8 @@ class _MedicationRemindersScreenState
                                                     .updateMedicationReminder(
                                                         updatedReminder);
                                               },
-                                              activeThumbColor: AppColors.primaryColor,
+                                              activeThumbColor:
+                                                  AppColors.primaryColor,
                                             ),
                                           ],
                                         ),
@@ -367,7 +377,8 @@ class _MedicationRemindersScreenState
                                   }
                                 });
                               },
-                              selectedColor: AppColors.primaryColor.withAlpha(51),
+                              selectedColor:
+                                  AppColors.primaryColor.withAlpha(51),
                               checkmarkColor: AppColors.primaryColor,
                             ),
                         ],
@@ -594,7 +605,8 @@ class _MedicationRemindersScreenState
                                   }
                                 });
                               },
-                              selectedColor: AppColors.primaryColor.withAlpha(51),
+                              selectedColor:
+                                  AppColors.primaryColor.withAlpha(51),
                               checkmarkColor: AppColors.primaryColor,
                             ),
                         ],

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:medical_app/models/chat_model.dart';
+import 'package:medical_app/models/chat_room_model.dart';
 import 'package:medical_app/providers/auth_provider.dart';
 import 'package:medical_app/providers/chat_provider.dart';
 import 'package:medical_app/screens/chat/chat_screen.dart';

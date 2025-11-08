@@ -28,3 +28,4 @@ void main() {
     expect(find.text('1'), findsOneWidget);
   });
 }
+// Removed local MyApp stub to use the MyApp widget from main.dart

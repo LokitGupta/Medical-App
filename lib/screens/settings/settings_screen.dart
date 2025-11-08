@@ -17,9 +17,17 @@ class SettingsScreen extends ConsumerWidget {
     final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
-      appBar: CustomAppBar(
-        title: l10n.settings,
-        showBackButton: true,
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF0D47A1),
+        centerTitle: true,
+        title: const Text(
+          'Settings',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+          ),
+        ),
       ),
       body: ListView(
         children: [

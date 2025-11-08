@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import 'package:medical_app/models/chat_model.dart';
+import 'package:medical_app/models/chat_room_model.dart';
 import 'package:medical_app/providers/auth_provider.dart';
 import 'package:medical_app/providers/chat_provider.dart';
 import 'package:medical_app/screens/video_call/video_call_screen.dart';
 import 'package:medical_app/utils/app_colors.dart';
 import 'package:medical_app/widgets/custom_app_bar.dart';
 import 'package:medical_app/widgets/custom_button.dart';
-import 'package:intl/intl.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
   final ChatRoomModel chatRoom;
@@ -27,9 +28,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     super.initState();
     _loadMessages();
 
-    // Subscribe to real-time messages
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(chatProvider.notifier).subscribeToMessages();
+      ref.read(chatProvider.notifier).subscribeToMessages(widget.chatRoom.id!);
     });
   }
 
@@ -37,7 +37,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   void dispose() {
     _messageController.dispose();
     _scrollController.dispose();
-    ref.read(chatProvider.notifier).unsubscribeFromMessages();
+    ref
+        .read(chatProvider.notifier)
+        .unsubscribeFromMessages(widget.chatRoom.id!);
     super.dispose();
   }
 
@@ -61,12 +63,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   Future<void> _sendMessage() async {
-    final message = _messageController.text.trim();
-    if (message.isEmpty) return;
+    final messageText = _messageController.text.trim();
+    if (messageText.isEmpty) return;
 
     final authState = ref.read(authProvider);
     final currentUserId = authState.user?.id;
-
     if (currentUserId == null || widget.chatRoom.id == null) return;
 
     final isDoctor = authState.user?.role == 'doctor';
@@ -74,21 +75,19 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         isDoctor ? widget.chatRoom.patientId : widget.chatRoom.doctorId;
 
     final chatMessage = ChatModel(
-      chatRoomId: widget.chatRoom.id,
+      chatRoomId: widget.chatRoom.id!,
       senderId: currentUserId,
       receiverId: receiverId,
-      message: message,
+      message: messageText,
       timestamp: DateTime.now(),
-      appointmentId: null, // Optional: link to appointment
+      appointmentId: null,
     );
 
     _messageController.clear();
 
     final success =
         await ref.read(chatProvider.notifier).sendMessage(chatMessage);
-    if (success) {
-      _scrollToBottom();
-    }
+    if (success) _scrollToBottom();
   }
 
   @override
@@ -96,13 +95,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final chatState = ref.watch(chatProvider);
     final authState = ref.watch(authProvider);
     final isDoctor = authState.user?.role == 'doctor';
-
-    final name =
+    final chatName =
         isDoctor ? widget.chatRoom.patientName : widget.chatRoom.doctorName;
 
     return Scaffold(
       appBar: CustomAppBar(
-        title: name ?? 'Chat',
+        title: chatName ?? 'Chat',
         showBackButton: true,
         actions: [
           IconButton(
@@ -111,14 +109,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => VideoCallScreen(
+                  builder: (_) => VideoCallScreen(
                     doctorName: isDoctor
                         ? widget.chatRoom.patientName ?? 'Patient'
                         : widget.chatRoom.doctorName ?? 'Doctor',
                     doctorAvatar: isDoctor
                         ? widget.chatRoom.patientAvatar
                         : widget.chatRoom.doctorAvatar,
-                    appointmentId: widget.chatRoom.id ?? '',
+                    appointmentId: widget.chatRoom.id!,
                   ),
                 ),
               );
@@ -147,11 +145,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.chat_bubble_outline,
-            size: 80,
-            color: Colors.grey[400],
-          ),
+          Icon(Icons.chat_bubble_outline, size: 80, color: Colors.grey[400]),
           const SizedBox(height: 16),
           Text(
             'No messages yet',
@@ -164,10 +158,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           const SizedBox(height: 8),
           Text(
             'Start the conversation by sending a message',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey[600],
-            ),
+            style: TextStyle(fontSize: 14, color: Colors.grey[600]),
             textAlign: TextAlign.center,
           ),
         ],
@@ -179,14 +170,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       {required String? currentUserId}) {
     return ListView.builder(
       controller: _scrollController,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       itemCount: messages.length,
       itemBuilder: (context, index) {
         final message = messages[index];
         final isMe = message.senderId == currentUserId;
         final showDate = index == 0 ||
-            !_isSameDay(
-                messages[index].timestamp, messages[index - 1].timestamp);
+            !_isSameDay(message.timestamp, messages[index - 1].timestamp);
 
         return Column(
           children: [
@@ -229,18 +219,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
           color: isMe ? AppColors.primaryColor : Colors.grey[200],
-          borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(isMe ? 20 : 0),
-            topRight: Radius.circular(isMe ? 0 : 20),
-            bottomLeft: Radius.circular(20),
-            bottomRight: Radius.circular(20),
-          ),
+          borderRadius: BorderRadius.circular(20),
         ),
         constraints: BoxConstraints(
           maxWidth: MediaQuery.of(context).size.width * 0.75,
         ),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.end,
+          crossAxisAlignment:
+              isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
           children: [
             Text(
               message.message,
@@ -272,7 +258,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withAlpha(26), // 0.1 opacity converted to alpha
+            color: Colors.grey.withAlpha(26),
             spreadRadius: 1,
             blurRadius: 3,
             offset: const Offset(0, -1),
@@ -283,12 +269,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         children: [
           IconButton(
             icon: const Icon(Icons.attach_file),
-            onPressed: () {
-              // TODO: Implement file attachment
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('File attachment coming soon')),
-              );
-            },
+            onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('File attachment coming soon'))),
           ),
           Expanded(
             child: TextField(
@@ -301,10 +283,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 ),
                 filled: true,
                 fillColor: Colors.grey[100],
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 10,
-                ),
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               ),
               textInputAction: TextInputAction.send,
               onSubmitted: (_) => _sendMessage(),
@@ -318,10 +298,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 ? const CircularProgressIndicator()
                 : CustomButton(
                     onPressed: _sendMessage,
-                    child: const Icon(
-                      Icons.send,
-                      color: Colors.white,
-                    ),
+                    child: const Icon(Icons.send, color: Colors.white),
                     padding: EdgeInsets.zero,
                   ),
           ),
@@ -338,18 +315,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   String _formatMessageDate(DateTime date) {
     final now = DateTime.now();
-    final yesterday = DateTime.now().subtract(const Duration(days: 1));
+    final yesterday = now.subtract(const Duration(days: 1));
 
-    if (date.year == now.year &&
-        date.month == now.month &&
-        date.day == now.day) {
-      return 'Today';
-    } else if (date.year == yesterday.year &&
-        date.month == yesterday.month &&
-        date.day == yesterday.day) {
-      return 'Yesterday';
-    } else {
-      return DateFormat('MMMM d, y').format(date);
-    }
+    if (_isSameDay(date, now)) return 'Today';
+    if (_isSameDay(date, yesterday)) return 'Yesterday';
+    return DateFormat('MMMM d, y').format(date);
   }
 }

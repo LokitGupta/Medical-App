@@ -1,5 +1,6 @@
 import 'dart:io' as io show File;
 import 'dart:typed_data';
+import 'package:medical_app/models/chat_room_model.dart';
 import 'package:medical_app/models/user_model.dart';
 import 'package:medical_app/models/payment_model.dart';
 import 'package:medical_app/models/chat_model.dart';
@@ -89,9 +90,7 @@ class SupabaseService {
       // Upload profile image if provided
       if (profileImageBytes != null && profileImageFileName != null) {
         final profileImagePath = '$userId/$profileImageFileName';
-        await _client.storage
-            .from('profile_images')
-            .uploadBinary(
+        await _client.storage.from('profile_images').uploadBinary(
               profileImagePath,
               profileImageBytes,
               fileOptions: const FileOptions(
@@ -142,11 +141,8 @@ class SupabaseService {
 
   Future<Map<String, dynamic>?> getUserProfile(String userId) async {
     // Use maybeSingle to avoid PGRST116 when no rows exist yet
-    final data = await _client
-        .from('users')
-        .select()
-        .eq('id', userId)
-        .maybeSingle();
+    final data =
+        await _client.from('users').select().eq('id', userId).maybeSingle();
 
     return data;
   }
@@ -216,10 +212,8 @@ class SupabaseService {
         return List<Map<String, dynamic>>.from(dataPatientsFk);
       } on PostgrestException catch (_) {
         // Fallback: select all columns without specifying names to avoid schema mismatch errors
-        final data = await _client
-            .from('appointments')
-            .select()
-            .eq(fieldName, userId);
+        final data =
+            await _client.from('appointments').select().eq(fieldName, userId);
         return List<Map<String, dynamic>>.from(data);
       }
     }
@@ -259,8 +253,7 @@ class SupabaseService {
   ) async {
     await _client
         .from('appointments')
-        .update({'status': status})
-        .eq('id', appointmentId);
+        .update({'status': status}).eq('id', appointmentId);
   }
 
   // Doctor methods
@@ -289,11 +282,8 @@ class SupabaseService {
 
     final orFilter = terms.map((t) => "specialty.ilike.%${t}%").join(',');
 
-    final data = await _client
-        .from('users')
-        .select()
-        .eq('role', 'doctor')
-        .or(orFilter);
+    final data =
+        await _client.from('users').select().eq('role', 'doctor').or(orFilter);
 
     return List<Map<String, dynamic>>.from(data);
   }
@@ -394,8 +384,7 @@ class SupabaseService {
   ) async {
     await _client
         .from('prescriptions')
-        .update({'file_url': fileUrl})
-        .eq('id', prescriptionId);
+        .update({'file_url': fileUrl}).eq('id', prescriptionId);
   }
 
   // Storage methods
@@ -405,18 +394,14 @@ class SupabaseService {
     if (file is io.File) {
       // Read bytes from native file and upload as binary (works across platforms)
       final Uint8List bytes = await file.readAsBytes();
-      response = await _client.storage
-          .from(bucket)
-          .uploadBinary(
+      response = await _client.storage.from(bucket).uploadBinary(
             path,
             bytes,
             fileOptions: const FileOptions(cacheControl: '3600', upsert: false),
           );
     } else if (file is Uint8List) {
       // Web or pre-read bytes
-      response = await _client.storage
-          .from(bucket)
-          .uploadBinary(
+      response = await _client.storage.from(bucket).uploadBinary(
             path,
             file,
             fileOptions: const FileOptions(cacheControl: '3600', upsert: false),
@@ -496,20 +481,17 @@ class SupabaseService {
         .single();
 
     // Update chat room with last message
-    await _client
-        .from('chat_rooms')
-        .update({
-          'last_message': message.message,
-          'last_message_time': message.timestamp.toIso8601String(),
-          'unread_count': _client.rpc(
-            'increment_unread_count',
-            params: {
-              'room_id': message.chatRoomId,
-              'user_id': message.receiverId,
-            },
-          ),
-        })
-        .eq('id', message.chatRoomId);
+    await _client.from('chat_rooms').update({
+      'last_message': message.message,
+      'last_message_time': message.timestamp.toIso8601String(),
+      'unread_count': _client.rpc(
+        'increment_unread_count',
+        params: {
+          'room_id': message.chatRoomId,
+          'user_id': message.receiverId,
+        },
+      ),
+    }).eq('id', message.chatRoomId);
 
     return ChatModel.fromJson(response);
   }
@@ -526,8 +508,7 @@ class SupabaseService {
     // Reset unread count
     await _client
         .from('chat_rooms')
-        .update({'unread_count': 0})
-        .eq('id', chatRoomId);
+        .update({'unread_count': 0}).eq('id', chatRoomId);
   }
 
   Future<ChatRoomModel> createChatRoom(
@@ -629,7 +610,7 @@ class SupabaseService {
           .from('emergency_contacts')
           .select()
           .eq('user_id', userId);
-      
+
       return List<Map<String, dynamic>>.from(response);
     } catch (e) {
       print('Error getting emergency contacts: $e');
@@ -685,9 +666,7 @@ class SupabaseService {
       if (fileData is String) {
         // Native platforms: we receive a file path, read bytes and upload binary
         final Uint8List bytes = await io.File(fileData).readAsBytes();
-        await _client.storage
-            .from('medical_records')
-            .uploadBinary(
+        await _client.storage.from('medical_records').uploadBinary(
               fileKey,
               bytes,
               fileOptions: const FileOptions(
@@ -697,9 +676,7 @@ class SupabaseService {
             );
       } else if (fileData is Uint8List) {
         // Web platforms: we receive binary data directly
-        await _client.storage
-            .from('medical_records')
-            .uploadBinary(
+        await _client.storage.from('medical_records').uploadBinary(
               fileKey,
               fileData,
               fileOptions: const FileOptions(
@@ -711,9 +688,8 @@ class SupabaseService {
         throw ArgumentError('Unsupported file data type');
       }
 
-      final fileUrl = _client.storage
-          .from('medical_records')
-          .getPublicUrl(fileKey);
+      final fileUrl =
+          _client.storage.from('medical_records').getPublicUrl(fileKey);
       return fileUrl;
     } catch (e) {
       print('Error uploading medical record file: $e');
@@ -789,10 +765,8 @@ class SupabaseService {
 
   Future<List<PaymentMethodModel>> getUserPaymentMethods(String userId) async {
     try {
-      final response = await _client
-          .from('payment_methods')
-          .select()
-          .eq('user_id', userId);
+      final response =
+          await _client.from('payment_methods').select().eq('user_id', userId);
 
       return response
           .map<PaymentMethodModel>(
@@ -807,11 +781,8 @@ class SupabaseService {
 
   Future<PaymentMethodModel> addPaymentMethod(PaymentMethodModel method) async {
     final data = method.toJson();
-    final response = await _client
-        .from('payment_methods')
-        .insert(data)
-        .select()
-        .single();
+    final response =
+        await _client.from('payment_methods').insert(data).select().single();
     return PaymentMethodModel.fromJson(response);
   }
 
@@ -823,14 +794,12 @@ class SupabaseService {
     // First, set all methods to non-default
     await _client
         .from('payment_methods')
-        .update({'is_default': false})
-        .eq('user_id', userId);
+        .update({'is_default': false}).eq('user_id', userId);
 
     // Then set the selected method as default
     await _client
         .from('payment_methods')
-        .update({'is_default': true})
-        .eq('id', methodId);
+        .update({'is_default': true}).eq('id', methodId);
   }
 
   Future<PaymentModel> processPayment({
@@ -852,11 +821,8 @@ class SupabaseService {
       'transaction_id': 'txn_${DateTime.now().millisecondsSinceEpoch}',
     };
 
-    final response = await _client
-        .from('payments')
-        .insert(payment)
-        .select()
-        .single();
+    final response =
+        await _client.from('payments').insert(payment).select().single();
     return PaymentModel.fromJson(response);
   }
 
@@ -864,8 +830,7 @@ class SupabaseService {
     try {
       await _client
           .from('notifications')
-          .update({'is_read': true})
-          .eq('id', notificationId);
+          .update({'is_read': true}).eq('id', notificationId);
       return true;
     } catch (e) {
       print('Error marking notification as read: $e');

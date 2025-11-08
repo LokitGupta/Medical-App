@@ -106,7 +106,9 @@ class _NewAppointmentScreenState extends ConsumerState<NewAppointmentScreen> {
         _selectedDate!.month == now.month &&
         _selectedDate!.day == now.day;
     final TimeOfDay initial = _selectedTime ??
-        (isToday ? TimeOfDay(hour: now.hour, minute: now.minute) : TimeOfDay.now());
+        (isToday
+            ? TimeOfDay(hour: now.hour, minute: now.minute)
+            : TimeOfDay.now());
 
     final TimeOfDay? picked = await showTimePicker(
       context: context,
@@ -241,7 +243,16 @@ class _NewAppointmentScreenState extends ConsumerState<NewAppointmentScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Book Appointment'),
+        backgroundColor: const Color(0xFF0D47A1),
+        centerTitle: true,
+        title: const Text(
+          'Book Appointment',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+          ),
+        ),
       ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -381,8 +392,10 @@ class _NewAppointmentScreenState extends ConsumerState<NewAppointmentScreen> {
                                               ),
                                               Text(
                                                 (doctor['specialty'] ??
-                                                        doctor['specialisation'] ??
-                                                        doctor['specialization'] ??
+                                                        doctor[
+                                                            'specialisation'] ??
+                                                        doctor[
+                                                            'specialization'] ??
                                                         doctor['speciality'] ??
                                                         'Specialist')
                                                     .toString(),
