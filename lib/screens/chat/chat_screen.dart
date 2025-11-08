@@ -74,6 +74,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         isDoctor ? widget.chatRoom.patientId : widget.chatRoom.doctorId;
 
     final chatMessage = ChatModel(
+      chatRoomId: widget.chatRoom.id,
       senderId: currentUserId,
       receiverId: receiverId,
       message: message,

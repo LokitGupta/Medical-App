@@ -7,6 +7,7 @@ class ChatModel {
   final bool isRead;
   final String? attachmentUrl;
   final String? appointmentId;
+  final String? chatRoomId;
 
   ChatModel({
     this.id,
@@ -17,6 +18,7 @@ class ChatModel {
     this.isRead = false,
     this.attachmentUrl,
     this.appointmentId,
+    this.chatRoomId,
   });
 
   factory ChatModel.fromJson(Map<String, dynamic> json) {
@@ -29,6 +31,7 @@ class ChatModel {
       isRead: json['is_read'] ?? false,
       attachmentUrl: json['attachment_url'],
       appointmentId: json['appointment_id'],
+      chatRoomId: json['chat_room_id'],
     );
   }
 
@@ -42,6 +45,7 @@ class ChatModel {
       'is_read': isRead,
       'attachment_url': attachmentUrl,
       'appointment_id': appointmentId,
+      'chat_room_id': chatRoomId,
     };
   }
 }

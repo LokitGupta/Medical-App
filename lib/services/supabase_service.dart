@@ -381,20 +381,26 @@ class SupabaseService {
     final response = await _client
         .from('chat_rooms')
         .select(
-            '*, patients!chat_rooms_patient_id_fkey(id, name, avatar_url), doctors!chat_rooms_doctor_id_fkey(id, name, avatar_url)')
+            '*, patient:users!chat_rooms_patient_id_fkey(id, name, avatar_url), doctor:users!chat_rooms_doctor_id_fkey(id, name, avatar_url)')
         .eq(field, userId)
         .order('last_message_time', ascending: false);
 
     return (response as List).map((room) {
+      final patient = room['patient'];
+      final doctor = room['doctor'];
+      final lastMessageTimeRaw = room['last_message_time'];
+      final lastMessageTime = lastMessageTimeRaw != null
+          ? DateTime.parse(lastMessageTimeRaw)
+          : DateTime.now();
       return ChatRoomModel(
         id: room['id'],
         patientId: room['patient_id'],
         doctorId: room['doctor_id'],
-        patientName: room['patients']['name'],
-        doctorName: room['doctors']['name'],
-        patientAvatar: room['patients']['avatar_url'],
-        doctorAvatar: room['doctors']['avatar_url'],
-        lastMessageTime: DateTime.parse(room['last_message_time']),
+        patientName: patient != null ? patient['name'] : null,
+        doctorName: doctor != null ? doctor['name'] : null,
+        patientAvatar: patient != null ? patient['avatar_url'] : null,
+        doctorAvatar: doctor != null ? doctor['avatar_url'] : null,
+        lastMessageTime: lastMessageTime,
         lastMessage: room['last_message'],
         unreadCount: room['unread_count'] ?? 0,
       );
@@ -425,7 +431,7 @@ class SupabaseService {
           'is_read': message.isRead,
           'attachment_url': message.attachmentUrl,
           'appointment_id': message.appointmentId,
-          'chat_room_id': message.id,
+          'chat_room_id': message.chatRoomId,
         })
         .select()
         .single();
@@ -435,10 +441,10 @@ class SupabaseService {
       'last_message': message.message,
       'last_message_time': message.timestamp.toIso8601String(),
       'unread_count': _client.rpc('increment_unread_count', params: {
-        'room_id': message.id,
+        'room_id': message.chatRoomId,
         'user_id': message.receiverId,
       }),
-    }).eq('id', message.id);
+    }).eq('id', message.chatRoomId);
 
     return ChatModel.fromJson(response);
   }

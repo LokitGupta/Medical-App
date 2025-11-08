@@ -197,7 +197,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
   // Listen to real-time messages
   void subscribeToMessages() {
     _supabaseService.subscribeToChatMessages((ChatModel message) {
-      if (message.receiverId == state.currentChatRoomId) {
+      if (message.chatRoomId == state.currentChatRoomId) {
         state = state.copyWith(
           messages: [...state.messages, message],
         );
@@ -207,7 +207,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
       } else {
         // Update unread count for other chat rooms
         final updatedChatRooms = state.chatRooms.map((room) {
-          if (room.id == message.receiverId) {
+          if (room.id == message.chatRoomId) {
             return ChatRoomModel(
               id: room.id,
               patientId: room.patientId,
