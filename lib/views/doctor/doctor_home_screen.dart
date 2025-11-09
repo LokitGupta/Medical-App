@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:fl_chart/fl_chart.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:medical_app/providers/auth_provider.dart';
 import 'package:medical_app/providers/appointment_provider.dart';
-import 'package:medical_app/widgets/custom_button.dart';
 import 'package:medical_app/widgets/notification_badge.dart';
 
 class DoctorHomeScreen extends ConsumerStatefulWidget {
@@ -15,6 +16,9 @@ class DoctorHomeScreen extends ConsumerStatefulWidget {
 }
 
 class _DoctorHomeScreenState extends ConsumerState<DoctorHomeScreen> {
+  SupabaseClient get supabase => Supabase.instance.client;
+  bool _showChart = false;
+
   @override
   void initState() {
     super.initState();
@@ -57,214 +61,31 @@ class _DoctorHomeScreenState extends ConsumerState<DoctorHomeScreen> {
           ),
         ],
       ),
-      drawer: Drawer(
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            DrawerHeader(
-              decoration: BoxDecoration(
-                color: Theme.of(context).primaryColor,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const CircleAvatar(
-                    radius: 30,
-                    backgroundColor: Colors.white,
-                    child: Icon(
-                      Icons.medical_services,
-                      size: 30,
-                      color: Colors.blue,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    user?.name ?? 'Doctor',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                    ),
-                  ),
-                  Text(
-                    user?.specialty ?? 'Specialist',
-                    style: const TextStyle(
-                      color: Colors.white70,
-                      fontSize: 14,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            ListTile(
-              leading: const Icon(Icons.home),
-              title: const Text('Home'),
-              onTap: () => Navigator.pop(context),
-            ),
-            ListTile(
-              leading: const Icon(Icons.calendar_today),
-              title: const Text('Appointments'),
-              onTap: () {
-                Navigator.pop(context);
-                context.go('/appointments');
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.description),
-              title: const Text('Prescriptions'),
-              onTap: () {
-                Navigator.pop(context);
-                context.go('/records');
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.chat),
-              title: const Text('Patient Chats'),
-              onTap: () {
-                Navigator.pop(context);
-                context.go('/chats');
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.payment),
-              title: const Text('Payments'),
-              onTap: () {
-                Navigator.pop(context);
-                context.go('/payments');
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.help),
-              title: const Text('Help'),
-              onTap: () {
-                Navigator.pop(context);
-                context.go('/help');
-              },
-            ),
-            const Divider(),
-            ListTile(
-              leading: const Icon(Icons.logout),
-              title: const Text('Logout'),
-              onTap: () async {
-                await ref.read(authProvider.notifier).signOut();
-                if (context.mounted) {
-                  context.go('/auth/login');
-                }
-              },
-            ),
-          ],
-        ),
-      ),
+      drawer: _buildDrawer(context, user),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Verification Status Banner
             if (user != null && user.role == 'doctor')
               _buildVerificationBanner(context, verificationStatus),
-
-            // Welcome Section
-            Card(
-              elevation: 4,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Welcome, Dr. ${user?.name ?? 'Doctor'}!',
-                      style: const TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'You have 5 appointments today',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.grey,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    CustomButton(
-                      text: 'View Schedule',
-                      icon: Icons.calendar_today,
-                      onPressed: () => context.go('/appointments'),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
+            _buildWelcomeCard(context, user),
             const SizedBox(height: 24),
-
-            // Quick Actions
             const Text(
               'Quick Actions',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
-            GridView.count(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              crossAxisCount: 2,
-              crossAxisSpacing: 16,
-              mainAxisSpacing: 16,
-              children: [
-                _buildActionCard(
-                  context,
-                  'Manage Appointments',
-                  Icons.calendar_today,
-                  Colors.blue,
-                  () => context.go('/appointments'),
-                  enabled: true,
-                ),
-                _buildActionCard(
-                  context,
-                  'Write Prescription',
-                  Icons.edit_document,
-                  Colors.green,
-                  () => context.go('/records/upload'),
-                  enabled: isApproved,
-                ),
-                _buildActionCard(
-                  context,
-                  'Patient Chats',
-                  Icons.chat,
-                  Colors.purple,
-                  () => context.push('/chats'),
-                  enabled: isApproved,
-                ),
-                _buildActionCard(
-                  context,
-                  'Update Availability',
-                  Icons.access_time,
-                  Colors.orange,
-                  () => context.go('/settings/availability'),
-                  enabled: isApproved,
-                ),
-              ],
-            ),
-
+            _buildQuickActions(context, isApproved),
+            const SizedBox(height: 16),
+            if (_showChart) _buildAppointmentChart(),
             const SizedBox(height: 24),
-
-            // Pending Appointments
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text(
                   'Pending Appointments',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
                 TextButton(
                   onPressed: () => context.go('/appointments'),
@@ -276,37 +97,30 @@ class _DoctorHomeScreenState extends ConsumerState<DoctorHomeScreen> {
             if (appointmentState.isLoading)
               const Center(child: CircularProgressIndicator())
             else if (pendingAppointments.isEmpty)
-              const Text(
-                'No pending appointments',
-                style: TextStyle(color: Colors.grey),
-              )
+              const Text('No pending appointments',
+                  style: TextStyle(color: Colors.grey))
             else
               Column(
-                children: List.generate(
-                  pendingAppointments.length,
-                  (index) {
-                    final appt = pendingAppointments[index];
-                    final dateFormat = DateFormat('MMM dd, yyyy');
-                    final timeFormat = DateFormat('hh:mm a');
-                    final dateTime =
-                        '${dateFormat.format(appt.startTime)}, ${timeFormat.format(appt.startTime)}';
-                    final patientName = appt.patientName ?? 'Patient';
-                    final reason = appt.notes ?? 'Appointment';
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 8.0),
-                      child: _buildPendingAppointment(
-                        context,
-                        patientName,
-                        reason,
-                        dateTime,
-                        () => context.go('/appointments/${appt.id}'),
-                      ),
-                    );
-                  },
-                ),
+                children: List.generate(pendingAppointments.length, (index) {
+                  final appt = pendingAppointments[index];
+                  final dateFormat = DateFormat('MMM dd, yyyy');
+                  final timeFormat = DateFormat('hh:mm a');
+                  final dateTime =
+                      '${dateFormat.format(appt.startTime)}, ${timeFormat.format(appt.startTime)}';
+                  final patientName = appt.patientName ?? 'Patient';
+                  final reason = appt.notes ?? 'Appointment';
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 8.0),
+                    child: _buildPendingAppointment(
+                      context,
+                      patientName,
+                      reason,
+                      dateTime,
+                      () => context.go('/appointments/${appt.id}'),
+                    ),
+                  );
+                }),
               ),
-
-            const SizedBox(height: 24),
           ],
         ),
       ),
@@ -318,6 +132,229 @@ class _DoctorHomeScreenState extends ConsumerState<DoctorHomeScreen> {
     );
   }
 
+  /// 🩵 Beautiful animated weekly chart
+  Widget _buildAppointmentChart() {
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+    return FutureBuilder<List<dynamic>>(
+      future: _fetchUpcomingAppointments(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          return Text('Error: ${snapshot.error}');
+        }
+
+        final appointments = snapshot.data ?? [];
+        Map<String, int> counts = {for (var d in days) d: 0};
+
+        for (var appt in appointments) {
+          final raw = appt['appointment_date'];
+          if (raw == null) continue;
+
+          try {
+            final date = DateTime.parse(raw.toString()).toLocal();
+            final dayName = DateFormat('EEE').format(date);
+            if (counts.containsKey(dayName)) {
+              counts[dayName] = (counts[dayName]! + 1);
+            }
+          } catch (e) {
+            debugPrint("⚠ Date parse failed for: $raw");
+          }
+        }
+
+        final total = counts.values.reduce((a, b) => a + b);
+        if (total == 0) {
+          return _noAppointmentsCard();
+        }
+
+        final barGroups = List.generate(days.length, (i) {
+          final count = counts[days[i]]!.toDouble();
+          return BarChartGroupData(
+            x: i,
+            barRods: [
+              BarChartRodData(
+                toY: count,
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF6DD5FA), Color(0xFF2980B9)],
+                  begin: Alignment.bottomCenter,
+                  end: Alignment.topCenter,
+                ),
+                width: 24,
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ],
+          );
+        });
+
+        return Card(
+          elevation: 6,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Upcoming Week Appointments',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  height: 220,
+                  child: BarChart(
+                    BarChartData(
+                      gridData: FlGridData(show: false),
+                      borderData: FlBorderData(show: false),
+                      titlesData: FlTitlesData(
+                        bottomTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            getTitlesWidget: (value, _) {
+                              final idx = value.toInt();
+                              if (idx >= days.length) return const SizedBox();
+                              return Text(
+                                days[idx],
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.black87,
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                        leftTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            interval: 1,
+                            getTitlesWidget: (value, _) => Text(
+                              value.toInt().toString(),
+                              style: const TextStyle(
+                                  fontSize: 11, color: Colors.black54),
+                            ),
+                          ),
+                        ),
+                        rightTitles: AxisTitles(
+                            sideTitles: SideTitles(showTitles: false)),
+                        topTitles: AxisTitles(
+                            sideTitles: SideTitles(showTitles: false)),
+                      ),
+                      barGroups: barGroups,
+                      barTouchData: BarTouchData(
+                        enabled: true,
+                        touchTooltipData: BarTouchTooltipData(
+                          getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                            final day = days[group.x.toInt()];
+                            return BarTooltipItem(
+                              '$day\n${rod.toY.toInt()} appointment(s)',
+                              const TextStyle(
+                                color: Colors.black87,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13,
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                    swapAnimationDuration: const Duration(milliseconds: 600),
+                    swapAnimationCurve: Curves.easeOutCubic,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _noAppointmentsCard() {
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: const [
+            Text('Upcoming Week Appointments',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            SizedBox(height: 16),
+            Center(
+              child: Text(
+                'No upcoming appointments in the next 7 days',
+                style: TextStyle(color: Colors.grey),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// ✅ Updated: handles local & UTC dates safely
+  Future<List<dynamic>> _fetchUpcomingAppointments() async {
+    try {
+      final user = supabase.auth.currentUser;
+      if (user == null) return [];
+
+      final now = DateTime.now(); // local
+      final endOfWeek = now.add(const Duration(days: 7));
+
+      final response = await supabase
+          .from('appointments')
+          .select()
+          .eq('doctor_id', user.id)
+          .eq('status', 'accepted')
+          .gte('appointment_date', now.toIso8601String())
+          .lte('appointment_date', endOfWeek.toIso8601String())
+          .order('appointment_date', ascending: true);
+
+      debugPrint('✅ Upcoming fetched: ${response.length}');
+      for (var a in response) {
+        debugPrint('📅 ${a['appointment_date']} | ${a['status']}');
+      }
+
+      return response;
+    } catch (e) {
+      debugPrint('❌ Error fetching upcoming: $e');
+      return [];
+    }
+  }
+
+  Widget _buildQuickActions(BuildContext context, bool isApproved) {
+    return GridView.count(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      crossAxisCount: 2,
+      crossAxisSpacing: 16,
+      mainAxisSpacing: 16,
+      children: [
+        _buildActionCard(context, 'Manage Appointments', Icons.calendar_today,
+            Colors.blue, () => context.go('/appointments')),
+        _buildActionCard(context, 'Write Prescription', Icons.edit_document,
+            Colors.green, () => context.go('/records/upload'),
+            enabled: isApproved),
+        _buildActionCard(context, 'Patient Chats', Icons.chat, Colors.purple,
+            () => context.push('/chats'),
+            enabled: isApproved),
+        _buildActionCard(
+            context, 'View Weekly Chart', Icons.bar_chart, Colors.orange, () {
+          setState(() => _showChart = !_showChart);
+        }),
+      ],
+    );
+  }
+
   Widget _buildActionCard(BuildContext context, String title, IconData icon,
       Color color, VoidCallback onTap,
       {bool enabled = true}) {
@@ -326,40 +363,20 @@ class _DoctorHomeScreenState extends ConsumerState<DoctorHomeScreen> {
       borderRadius: BorderRadius.circular(12),
       child: Card(
         elevation: 4,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         child: Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.all(16),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
-                icon,
-                size: 40,
-                color: enabled ? color : Colors.grey,
-              ),
+              Icon(icon, size: 40, color: enabled ? color : Colors.grey),
               const SizedBox(height: 12),
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              if (!enabled) ...[
-                const SizedBox(height: 8),
-                const Text(
-                  'Approval required',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.redAccent,
-                  ),
+              Text(title,
                   textAlign: TextAlign.center,
-                ),
-              ]
+                  style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87)),
             ],
           ),
         ),
@@ -367,25 +384,147 @@ class _DoctorHomeScreenState extends ConsumerState<DoctorHomeScreen> {
     );
   }
 
+  Widget _buildDrawer(BuildContext context, dynamic user) {
+    final String name = user?.name ?? 'Doctor';
+    final String email = user?.email ?? 'No email';
+    final String verificationStatus =
+        (user?.doctorVerificationStatus ?? 'pending').toLowerCase();
+    final bool isVerified = verificationStatus == 'approved';
+
+    return Drawer(
+      child: SafeArea(
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Theme.of(context).primaryColor,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const CircleAvatar(
+                    radius: 28,
+                    backgroundColor: Colors.white,
+                    child: Icon(Icons.medical_services,
+                        size: 28, color: Colors.blue),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    'Dr. $name',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    email,
+                    style: const TextStyle(color: Colors.white70, fontSize: 14),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Icon(
+                        isVerified ? Icons.verified : Icons.hourglass_top,
+                        color: isVerified ? Colors.greenAccent : Colors.amber,
+                        size: 16,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        isVerified ? 'Verified' : 'Pending Verification',
+                        style: const TextStyle(
+                            color: Colors.white70, fontSize: 13),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.dashboard, color: Colors.blue),
+              title: const Text('Dashboard'),
+              onTap: () => context.go('/home'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.calendar_today, color: Colors.blue),
+              title: const Text('Appointments'),
+              onTap: () => context.go('/appointments'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.chat, color: Colors.purple),
+              title: const Text('Patient Chats'),
+              onTap: () => context.push('/chats'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.bar_chart, color: Colors.orange),
+              title: const Text('Weekly Chart'),
+              onTap: () {
+                Navigator.pop(context);
+                setState(() => _showChart = !_showChart);
+              },
+            ),
+            const Divider(),
+            ListTile(
+              leading: const Icon(Icons.logout, color: Colors.red),
+              title: const Text('Logout'),
+              onTap: () async {
+                await Supabase.instance.client.auth.signOut();
+                if (context.mounted) {
+                  context.go('/auth/login');
+                }
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWelcomeCard(BuildContext context, dynamic user) {
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('Welcome Dr. ${user?.name ?? 'Doctor'}!',
+              style:
+                  const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          Text(user?.specialty ?? 'Specialist',
+              style: const TextStyle(color: Colors.grey)),
+        ]),
+      ),
+    );
+  }
+
+  Widget _buildPendingAppointment(BuildContext context, String patientName,
+          String reason, String dateTime, VoidCallback onTap) =>
+      Card(
+          child: ListTile(
+        title: Text(patientName,
+            style: const TextStyle(fontWeight: FontWeight.bold)),
+        subtitle: Text('$reason\n$dateTime'),
+        isThreeLine: true,
+        onTap: onTap,
+      ));
+
   Widget _buildVerificationBanner(BuildContext context, String status) {
     Color bg;
     Color fg;
     IconData icon;
     String message;
-
     switch (status) {
       case 'approved':
         bg = Colors.green.shade50;
         fg = Colors.green.shade700;
         icon = Icons.verified;
         message = 'Verification approved. You can access all features.';
-        break;
-      case 'rejected':
-        bg = Colors.red.shade50;
-        fg = Colors.red.shade700;
-        icon = Icons.error_outline;
-        message =
-            'Verification rejected. Please resubmit documents or contact support.';
         break;
       default:
         bg = Colors.orange.shade50;
@@ -401,183 +540,14 @@ class _DoctorHomeScreenState extends ConsumerState<DoctorHomeScreen> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(12.0),
-        child: Row(
-          children: [
-            Icon(icon, color: fg),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                message,
-                style: TextStyle(
-                    color: fg, fontSize: 14, fontWeight: FontWeight.w600),
-              ),
-            ),
-            if (status == 'rejected')
-              TextButton(
-                onPressed: () => context.go('/settings'),
-                child: const Text('Review'),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPendingAppointment(
-    BuildContext context,
-    String patientName,
-    String reason,
-    String dateTime,
-    VoidCallback onTap,
-  ) {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Row(
-            children: [
-              CircleAvatar(
-                radius: 25,
-                backgroundColor: Colors.blue.shade100,
-                child: const Icon(
-                  Icons.person,
-                  color: Colors.blue,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      patientName,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Text(
-                      reason,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.access_time,
-                          size: 14,
-                          color: Colors.blue,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          dateTime,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            color: Colors.blue,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              Row(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.check_circle, color: Colors.green),
-                    onPressed: () {
-                      // Accept appointment
-                    },
-                    tooltip: 'Accept',
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.cancel, color: Colors.red),
-                    onPressed: () {
-                      // Reject appointment
-                    },
-                    tooltip: 'Reject',
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildRecentPatientCard(
-    BuildContext context,
-    String patientName,
-    String lastVisit,
-    String conditions,
-    VoidCallback onTap,
-  ) {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Row(
-            children: [
-              CircleAvatar(
-                radius: 25,
-                backgroundColor: Colors.green.shade100,
-                child: const Icon(
-                  Icons.person,
-                  color: Colors.green,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      patientName,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Text(
-                      lastVisit,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      conditions,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const Icon(Icons.chevron_right),
-            ],
-          ),
-        ),
+        child: Row(children: [
+          Icon(icon, color: fg),
+          const SizedBox(width: 12),
+          Expanded(
+              child: Text(message,
+                  style: TextStyle(
+                      color: fg, fontSize: 14, fontWeight: FontWeight.w600))),
+        ]),
       ),
     );
   }

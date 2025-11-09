@@ -3,7 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class PrescriptionDetailsScreen extends ConsumerWidget {
   final String prescriptionId;
-  const PrescriptionDetailsScreen({Key? key, required this.prescriptionId})
+  const PrescriptionDetailsScreen(
+      {Key? key, required this.prescriptionId, required String appointmentId})
       : super(key: key);
 
   @override

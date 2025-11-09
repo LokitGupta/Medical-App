@@ -9,7 +9,9 @@ import 'package:medical_app/screens/chat/chat_screen.dart';
 class ChatRoomRoute extends ConsumerStatefulWidget {
   final String chatRoomId;
 
-  const ChatRoomRoute({Key? key, required this.chatRoomId}) : super(key: key);
+  const ChatRoomRoute(
+      {Key? key, required this.chatRoomId, required String otherUserId})
+      : super(key: key);
 
   @override
   ConsumerState<ChatRoomRoute> createState() => _ChatRoomRouteState();
