@@ -118,23 +118,23 @@ class _SymptomResultScreenState extends State<SymptomResultScreen> {
                       style: theme.textTheme.bodyLarge!
                           .copyWith(height: 1.4, fontSize: 16),
                     ),
-                    const SizedBox(height: 20),
-                    Center(
-                      child: ElevatedButton.icon(
-                        onPressed: () => Navigator.pop(context),
-                        icon: const Icon(Icons.arrow_back_rounded),
-                        label: const Text('Back'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: theme.primaryColor,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 24, vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                      ),
-                    )
+                    // const SizedBox(height: 20),
+                    // Center(
+                    //   child: ElevatedButton.icon(
+                    //     onPressed: () => Navigator.pop(context),
+                    //     icon: const Icon(Icons.arrow_back_rounded),
+                    //     label: const Text('Back'),
+                    //     style: ElevatedButton.styleFrom(
+                    //       backgroundColor: theme.primaryColor,
+                    //       foregroundColor: Colors.white,
+                    //       padding: const EdgeInsets.symmetric(
+                    //           horizontal: 24, vertical: 12),
+                    //       shape: RoundedRectangleBorder(
+                    //         borderRadius: BorderRadius.circular(12),
+                    //       ),
+                    //     ),
+                    //   ),
+                    // )
                   ],
                 ),
               ),
