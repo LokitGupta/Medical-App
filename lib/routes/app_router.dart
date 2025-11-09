@@ -142,7 +142,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       // Patient & Doctor Home
       GoRoute(
           path: '/patient/home',
-          builder: (context, state) => const PatientHomeScreen()),
+          builder: (context, state) => PatientHomeScreen()),
       GoRoute(
           path: '/doctor/home',
           builder: (context, state) => const DoctorHomeScreen()),
