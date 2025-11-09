@@ -9,6 +9,7 @@ import 'package:medical_app/providers/medical_record_provider.dart';
 import 'package:medical_app/widgets/custom_button.dart';
 import 'package:medical_app/widgets/custom_text_field.dart';
 import 'dart:io';
+import 'dart:typed_data';
 
 class UploadMedicalRecordScreen extends ConsumerStatefulWidget {
   const UploadMedicalRecordScreen({Key? key}) : super(key: key);
@@ -26,6 +27,7 @@ class _UploadMedicalRecordScreenState
 
   String _selectedRecordType = 'Lab Reports';
   File? _selectedFile;
+  Uint8List? _fileBytes;
   String? _fileName;
   bool _isLoading = false;
 
@@ -52,8 +54,17 @@ class _UploadMedicalRecordScreenState
 
       if (result != null) {
         setState(() {
-          _selectedFile = File(result.files.single.path!);
-          _fileName = result.files.single.name;
+          final picked = result.files.single;
+          _fileName = picked.name;
+          if (picked.bytes != null) {
+            // Web: use bytes, path not available
+            _fileBytes = picked.bytes;
+            _selectedFile = null;
+          } else if (picked.path != null) {
+            // Mobile/Desktop: use file path
+            _selectedFile = File(picked.path!);
+            _fileBytes = null;
+          }
 
           // Auto-fill title with filename if empty
           if (_titleController.text.isEmpty) {
@@ -78,8 +89,18 @@ class _UploadMedicalRecordScreenState
 
       if (image != null) {
         setState(() {
-          _selectedFile = File(image.path);
           _fileName = image.name;
+          // Read as bytes to support web where path is unavailable
+          _imageToBytes(image).then((bytes) {
+            setState(() {
+              _fileBytes = bytes;
+              _selectedFile = null;
+            });
+          });
+          // Fallback: on mobile/desktop path will be available
+          if (image.path.isNotEmpty) {
+            _selectedFile = File(image.path);
+          }
 
           // Auto-fill title with filename if empty
           if (_titleController.text.isEmpty) {
@@ -96,7 +117,7 @@ class _UploadMedicalRecordScreenState
 
   Future<void> _uploadRecord() async {
     if (_formKey.currentState!.validate()) {
-      if (_selectedFile == null) {
+      if (_selectedFile == null && _fileBytes == null) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Please select a file to upload')),
         );
@@ -126,12 +147,17 @@ class _UploadMedicalRecordScreenState
           createdAt: DateTime.now(),
         );
 
-        // Upload record
-        final success =
-            await ref.read(medicalRecordProvider.notifier).uploadMedicalRecord(
-                  record,
-                  _selectedFile!.path,
-                );
+        // Upload record (support web bytes or native path)
+        final dynamic fileData = _fileBytes ?? _selectedFile!.path;
+        final String fileName = _fileName ??
+            'record_${DateTime.now().millisecondsSinceEpoch}.dat';
+        final success = await ref
+            .read(medicalRecordProvider.notifier)
+            .uploadMedicalRecord(
+              record,
+              fileData,
+              fileName,
+            );
 
         if (mounted) {
           if (success) {
@@ -144,8 +170,11 @@ class _UploadMedicalRecordScreenState
             context.pop();
           } else {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Failed to upload medical record'),
+              SnackBar(
+                content: Text(
+                  ref.read(medicalRecordProvider).error ??
+                      'Failed to upload medical record',
+                ),
                 backgroundColor: Colors.red,
               ),
             );
@@ -197,7 +226,7 @@ class _UploadMedicalRecordScreenState
               const SizedBox(height: 16),
 
               // File Preview
-              if (_selectedFile != null) ...[
+              if (_selectedFile != null || _fileBytes != null) ...[
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
@@ -227,7 +256,9 @@ class _UploadMedicalRecordScreenState
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              '${(_selectedFile!.lengthSync() / 1024).toStringAsFixed(2)} KB',
+                              _fileBytes != null
+                                  ? '${(_fileBytes!.lengthInBytes / 1024).toStringAsFixed(2)} KB'
+                                  : '${(_selectedFile!.lengthSync() / 1024).toStringAsFixed(2)} KB',
                               style: TextStyle(
                                 fontSize: 12,
                                 color: Colors.grey[600],
@@ -241,6 +272,7 @@ class _UploadMedicalRecordScreenState
                         onPressed: () {
                           setState(() {
                             _selectedFile = null;
+                            _fileBytes = null;
                             _fileName = null;
                           });
                         },
@@ -423,6 +455,14 @@ class _UploadMedicalRecordScreenState
         return Colors.green;
       default:
         return Colors.orange;
+    }
+  }
+
+  Future<Uint8List> _imageToBytes(XFile image) async {
+    try {
+      return await image.readAsBytes();
+    } catch (_) {
+      return Uint8List(0);
     }
   }
 }

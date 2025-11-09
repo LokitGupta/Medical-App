@@ -173,10 +173,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/prescriptions/:id',
         builder: (context, state) {
           final id = state.pathParameters['id'] ?? '';
-          return PrescriptionDetailsScreen(
-            appointmentId: id,
-            prescriptionId: '',
-          );
+          return PrescriptionDetailsScreen(appointmentId: id);
         },
       ),
 
@@ -212,10 +209,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         name: 'chat-room',
         builder: (context, state) {
           final id = state.pathParameters['id'] ?? '';
-          return ChatRoomRoute(
-            otherUserId: id,
-            chatRoomId: '',
-          );
+          return ChatRoomRoute(otherUserId: id);
         },
       ),
       GoRoute(

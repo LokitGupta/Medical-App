@@ -1,9 +1,7 @@
 import 'dart:io' as io show File;
 import 'dart:typed_data';
-import 'package:medical_app/models/chat_room_model.dart';
 import 'package:medical_app/models/user_model.dart';
 import 'package:medical_app/models/payment_model.dart';
-import 'package:medical_app/models/chat_model.dart';
 import 'package:medical_app/models/medical_record_model.dart';
 import 'package:medical_app/models/notification_model.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -193,12 +191,12 @@ class SupabaseService {
     try {
       // Prefer explicit FK joins to ensure names are returned even if implicit
       // relationships are not discovered by PostgREST
-      final dataUsersFk = await _client
-          .from('appointments')
-          .select(
-            '*, doctor:users!appointments_doctor_id_fkey(name, specialty), patient:users!appointments_patient_id_fkey(name)',
-          )
-          .eq(fieldName, userId);
+      final dataUsersFk = await _client.from('appointments').select('''
+      *,
+      doctor:users!appointments_doctor_id_fkey(id, name, specialty),
+      patient:users!appointments_patient_id_fkey(id, name)
+    ''').eq(fieldName, userId);
+
       return List<Map<String, dynamic>>.from(dataUsersFk);
     } on PostgrestException catch (_) {
       try {
@@ -325,8 +323,8 @@ class SupabaseService {
     }
   }
 
-  // Prescription methods
-  Future<void> createPrescription({
+// Create prescription - uses patient_prescriptions table
+  Future<Map<String, dynamic>> createPrescription({
     required String appointmentId,
     required String patientId,
     required String doctorId,
@@ -334,56 +332,80 @@ class SupabaseService {
     required String instructions,
     String? fileUrl,
   }) async {
-    await _client.from('prescriptions').insert({
-      'appointment_id': appointmentId,
-      'patient_id': patientId,
-      'doctor_id': doctorId,
-      'medication_list': medications,
-      'instructions': instructions,
-      'file_url': fileUrl,
-      'created_at': DateTime.now().toIso8601String(),
-    });
+    try {
+      print('Creating prescription with data:');
+      print('appointment_id: $appointmentId');
+      print('patient_id: $patientId');
+      print('doctor_id: $doctorId');
+      print('prescription: $instructions');
+
+      // Insert into patient_prescriptions table (correct table name)
+      final response = await _client
+          .from('patient_prescriptions')
+          .insert({
+            'appointment_id': appointmentId,
+            'patient_id': patientId,
+            'doctor_id': doctorId,
+            'prescription': instructions,
+            'created_at': DateTime.now().toIso8601String(),
+          })
+          .select()
+          .single();
+
+      print('Prescription created successfully: $response');
+      return Map<String, dynamic>.from(response);
+    } catch (e) {
+      print('Error creating prescription: $e');
+      print('Error type: ${e.runtimeType}');
+      rethrow;
+    }
   }
 
+// Get patient prescriptions
   Future<List<Map<String, dynamic>>> getPatientPrescriptions(
     String patientId,
   ) async {
     final data = await _client
-        .from('prescriptions')
-        .select('*, appointment:appointment_id(doctor:doctor_id(name))')
-        .eq('patient_id', patientId);
+        .from('patient_prescriptions')
+        .select()
+        .eq('patient_id', patientId)
+        .order('created_at', ascending: false);
 
     return List<Map<String, dynamic>>.from(data);
   }
 
+// Get doctor prescriptions
   Future<List<Map<String, dynamic>>> getDoctorPrescriptions(
     String doctorId,
   ) async {
     final data = await _client
-        .from('prescriptions')
-        .select('*, appointment:appointment_id(doctor:doctor_id(name))')
-        .eq('doctor_id', doctorId);
+        .from('patient_prescriptions')
+        .select()
+        .eq('doctor_id', doctorId)
+        .order('created_at', ascending: false);
     return List<Map<String, dynamic>>.from(data);
   }
 
+// Get prescription by appointment
   Future<Map<String, dynamic>?> getPrescriptionByAppointment(
     String appointmentId,
   ) async {
     final data = await _client
-        .from('prescriptions')
-        .select('*, appointment:appointment_id(doctor:doctor_id(name))')
+        .from('patient_prescriptions')
+        .select()
         .eq('appointment_id', appointmentId)
         .maybeSingle();
     if (data == null) return null;
     return Map<String, dynamic>.from(data);
   }
 
+// Update prescription file (if you need this feature later)
   Future<void> updatePrescriptionFile(
     String prescriptionId,
     String fileUrl,
   ) async {
     await _client
-        .from('prescriptions')
+        .from('patient_prescriptions')
         .update({'file_url': fileUrl}).eq('id', prescriptionId);
   }
 
@@ -417,157 +439,7 @@ class SupabaseService {
     await _client.storage.from(bucket).remove([filePath]);
   }
 
-  // Chat methods
-  Future<List<ChatRoomModel>> getChatRooms(String userId, bool isDoctor) async {
-    final field = isDoctor ? 'doctor_id' : 'patient_id';
-
-    final response = await _client
-        .from('chat_rooms')
-        .select(
-          '*, patient:users!chat_rooms_patient_id_fkey(id, name, avatar_url), doctor:users!chat_rooms_doctor_id_fkey(id, name, avatar_url)',
-        )
-        .eq(field, userId)
-        .order('last_message_time', ascending: false);
-
-    return (response as List).map((room) {
-      final patient = room['patient'];
-      final doctor = room['doctor'];
-      final lastMessageTimeRaw = room['last_message_time'];
-      final lastMessageTime = lastMessageTimeRaw != null
-          ? DateTime.parse(lastMessageTimeRaw)
-          : DateTime.now();
-      return ChatRoomModel(
-        id: room['id'],
-        patientId: room['patient_id'],
-        doctorId: room['doctor_id'],
-        patientName: patient != null ? patient['name'] : null,
-        doctorName: doctor != null ? doctor['name'] : null,
-        patientAvatar: patient != null ? patient['avatar_url'] : null,
-        doctorAvatar: doctor != null ? doctor['avatar_url'] : null,
-        lastMessageTime: lastMessageTime,
-        lastMessage: room['last_message'],
-        unreadCount: room['unread_count'] ?? 0,
-      );
-    }).toList();
-  }
-
-  Future<List<ChatModel>> getChatMessages(String chatRoomId) async {
-    final response = await _client
-        .from('chat_messages')
-        .select()
-        .eq('chat_room_id', chatRoomId)
-        .order('timestamp');
-
-    return (response as List).map((message) {
-      return ChatModel.fromJson(message);
-    }).toList();
-  }
-
-  Future<ChatModel> sendChatMessage(ChatModel message) async {
-    // Insert message
-    final response = await _client
-        .from('chat_messages')
-        .insert({
-          'sender_id': message.senderId,
-          'receiver_id': message.receiverId,
-          'message': message.message,
-          'timestamp': message.timestamp.toIso8601String(),
-          'is_read': message.isRead,
-          'attachment_url': message.attachmentUrl,
-          'appointment_id': message.appointmentId,
-          'chat_room_id': message.chatRoomId,
-        })
-        .select()
-        .single();
-
-    // Update chat room with last message
-    await _client.from('chat_rooms').update({
-      'last_message': message.message,
-      'last_message_time': message.timestamp.toIso8601String(),
-      'unread_count': _client.rpc(
-        'increment_unread_count',
-        params: {
-          'room_id': message.chatRoomId,
-          'user_id': message.receiverId,
-        },
-      ),
-    }).eq('id', message.chatRoomId);
-
-    return ChatModel.fromJson(response);
-  }
-
-  Future<void> markMessagesAsRead(String chatRoomId, String userId) async {
-    // Mark messages as read
-    await _client
-        .from('chat_messages')
-        .update({'is_read': true})
-        .eq('chat_room_id', chatRoomId)
-        .eq('receiver_id', userId)
-        .eq('is_read', false);
-
-    // Reset unread count
-    await _client
-        .from('chat_rooms')
-        .update({'unread_count': 0}).eq('id', chatRoomId);
-  }
-
-  Future<ChatRoomModel> createChatRoom(
-    String patientId,
-    String doctorId,
-  ) async {
-    // Get patient and doctor info
-    final patientData = await _client
-        .from('users')
-        .select('name, avatar_url')
-        .eq('id', patientId)
-        .single();
-
-    final doctorData = await _client
-        .from('users')
-        .select('name, avatar_url')
-        .eq('id', doctorId)
-        .single();
-
-    // Create chat room
-    final response = await _client
-        .from('chat_rooms')
-        .insert({
-          'patient_id': patientId,
-          'doctor_id': doctorId,
-          'last_message_time': DateTime.now().toIso8601String(),
-          'unread_count': 0,
-        })
-        .select()
-        .single();
-
-    return ChatRoomModel(
-      id: response['id'],
-      patientId: patientId,
-      doctorId: doctorId,
-      patientName: patientData['name'],
-      doctorName: doctorData['name'],
-      patientAvatar: patientData['avatar_url'],
-      doctorAvatar: doctorData['avatar_url'],
-      lastMessageTime: DateTime.parse(response['last_message_time']),
-      lastMessage: response['last_message'],
-      unreadCount: 0,
-    );
-  }
-
-  void subscribeToChatMessages(Function(ChatModel) onMessageReceived) {
-    _client.channel('public:chat_messages').on(
-      RealtimeListenTypes.postgresChanges,
-      ChannelFilter(event: 'INSERT', schema: 'public', table: 'chat_messages'),
-      (payload, [ref]) {
-        final message = ChatModel.fromJson(payload['new']);
-        onMessageReceived(message);
-      },
-    ).subscribe();
-  }
-
-  void unsubscribeFromChatMessages() {
-    _client.removeChannel(_client.channel('public:chat_messages'));
-  }
+  // Chat methods replaced by ChatService (lib/services/chat_service.dart)
 
   // Realtime methods
   RealtimeChannel createChatChannel(String appointmentId) {
@@ -697,9 +569,30 @@ class SupabaseService {
     }
   }
 
+  Future<void> deleteMedicalRecordFile(String fileUrl) async {
+    try {
+      final fileKey = fileUrl.split('/').last;
+      await _client.storage.from('medical_records').remove([fileKey]);
+    } catch (e) {
+      print('Error deleting medical record file: $e');
+      // Non-fatal, as the primary record deletion succeeded.
+    }
+  }
+
   Future<bool> createMedicalRecord(MedicalRecordModel record) async {
     try {
-      await _client.from('medical_records').insert(record.toJson());
+      // Insert only canonical columns expected by the table schema
+      final Map<String, dynamic> data = {
+        'patient_id': record.patientId,
+        'file_url': record.fileUrl,
+        'record_type': record.recordType,
+        'title': record.title,
+        // Include description only when present
+        if (record.description != null) 'description': record.description,
+        'created_at': record.createdAt.toIso8601String(),
+      };
+
+      await _client.from('medical_records').insert(data);
       return true;
     } catch (e) {
       print('Error creating medical record: $e');

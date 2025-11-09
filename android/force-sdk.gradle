@@ -1,0 +1,17 @@
+// Force every Android subproject to use modern SDK and build tools
+allprojects {
+    afterEvaluate { project ->
+        if (project.hasProperty("android")) {
+            project.android {
+                compileSdkVersion 36
+                buildToolsVersion "36.0.0"
+                if (project.android.defaultConfig != null) {
+                    project.android.defaultConfig {
+                        targetSdkVersion 36
+                        minSdkVersion Math.max(defaultConfig.minSdkVersion.apiLevel, 21)
+                    }
+                }
+            }
+        }
+    }
+}

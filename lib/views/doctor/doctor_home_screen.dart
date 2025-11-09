@@ -125,7 +125,7 @@ class _DoctorHomeScreenState extends ConsumerState<DoctorHomeScreen> {
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: isApproved ? () => context.go('/records/upload') : null,
+        onPressed: isApproved ? () => context.go('/appointments') : null,
         child: const Icon(Icons.edit_document),
         tooltip: isApproved ? 'Create Prescription' : 'Awaiting Verification',
       ),

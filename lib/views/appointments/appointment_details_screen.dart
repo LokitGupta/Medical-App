@@ -7,6 +7,7 @@ import 'package:medical_app/providers/appointment_provider.dart';
 import 'package:medical_app/providers/auth_provider.dart';
 import 'package:medical_app/providers/chat_provider.dart';
 import 'package:medical_app/widgets/custom_button.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AppointmentDetailsScreen extends ConsumerWidget {
   final String appointmentId;
@@ -306,7 +307,7 @@ class AppointmentDetailsScreen extends ConsumerWidget {
 
                       const SizedBox(height: 16),
 
-                      // Participant Card
+                      // ✅ Participant Card (fixed)
                       Card(
                         elevation: 2,
                         shape: RoundedRectangleBorder(
@@ -325,51 +326,105 @@ class AppointmentDetailsScreen extends ConsumerWidget {
                                 ),
                               ),
                               const SizedBox(height: 16),
-                              Row(
-                                children: [
-                                  CircleAvatar(
-                                    radius: 24,
-                                    backgroundColor: Colors.blue.shade100,
-                                    child: Icon(
-                                      isDoctor
-                                          ? Icons.person
-                                          : Icons.medical_services,
-                                      color: Colors.blue,
-                                      size: 24,
+                              if (isDoctor)
+                                Row(
+                                  children: [
+                                    CircleAvatar(
+                                      radius: 24,
+                                      backgroundColor: Colors.blue.shade100,
+                                      child: const Icon(
+                                        Icons.person,
+                                        color: Colors.blue,
+                                        size: 24,
+                                      ),
                                     ),
+                                    const SizedBox(width: 16),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          const Text(
+                                            'Patient',
+                                            style: TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            'ID: ${appointment.patientId}',
+                                            style: const TextStyle(
+                                              fontSize: 14,
+                                              color: Colors.grey,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                )
+                              else
+                                FutureBuilder(
+                                  future: _fetchUserName(
+                                    ref,
+                                    appointment.doctorId,
                                   ),
-                                  const SizedBox(width: 16),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
+                                  builder: (context, snapshot) {
+                                    if (snapshot.connectionState ==
+                                        ConnectionState.waiting) {
+                                      return const Center(
+                                          child: CircularProgressIndicator());
+                                    }
+                                    if (snapshot.hasError) {
+                                      return const Text(
+                                        'Error loading user info',
+                                        style: TextStyle(color: Colors.red),
+                                      );
+                                    }
+
+                                    final userName = snapshot.data ?? 'Doctor';
+
+                                    return Row(
                                       children: [
-                                        Text(
-                                          isDoctor
-                                              ? appointment.patientName ??
-                                                  'Patient'
-                                              : 'Dr. ${appointment.doctorName ?? 'Doctor'}',
-                                          style: const TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.bold,
+                                        CircleAvatar(
+                                          radius: 24,
+                                          backgroundColor: Colors.blue.shade100,
+                                          child: const Icon(
+                                            Icons.medical_services,
+                                            color: Colors.blue,
+                                            size: 24,
                                           ),
                                         ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          isDoctor
-                                              ? 'Patient ID: ${appointment.patientId}'
-                                              : appointment.doctorSpecialty ??
-                                                  'Specialist',
-                                          style: const TextStyle(
-                                            fontSize: 14,
-                                            color: Colors.grey,
+                                        const SizedBox(width: 16),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                'Dr. $userName',
+                                                style: const TextStyle(
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 4),
+                                              Text(
+                                                appointment.doctorSpecialty ??
+                                                    'Specialist',
+                                                style: const TextStyle(
+                                                  fontSize: 14,
+                                                  color: Colors.grey,
+                                                ),
+                                              ),
+                                            ],
                                           ),
                                         ),
                                       ],
-                                    ),
-                                  ),
-                                ],
-                              ),
+                                    );
+                                  },
+                                ),
                             ],
                           ),
                         ),
@@ -441,9 +496,7 @@ class AppointmentDetailsScreen extends ConsumerWidget {
                                 children: [
                                   const Text(
                                     'Consultation Fee',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                    ),
+                                    style: TextStyle(fontSize: 16),
                                   ),
                                   Text(
                                     '₹${appointment.fee}',
@@ -461,15 +514,11 @@ class AppointmentDetailsScreen extends ConsumerWidget {
                                 children: [
                                   const Text(
                                     'Payment Status',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                    ),
+                                    style: TextStyle(fontSize: 16),
                                   ),
                                   Container(
                                     padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 4,
-                                    ),
+                                        horizontal: 8, vertical: 4),
                                     decoration: BoxDecoration(
                                       color: (appointment.status == 'completed')
                                           ? Colors.green.withAlpha(26)
@@ -499,7 +548,7 @@ class AppointmentDetailsScreen extends ConsumerWidget {
                                     text: 'Pay Now',
                                     onPressed: () {
                                       context.go(
-                                          '/payments/checkout?appointmentId=${appointment.id}');
+                                          '/payments/checkout?appointmentId=${appointment.id}&referenceId=${appointment.id}&paymentType=appointment&amount=${appointment.fee}');
                                     },
                                   ),
                                 ),
@@ -517,7 +566,8 @@ class AppointmentDetailsScreen extends ConsumerWidget {
                             Expanded(
                               child: OutlinedButton.icon(
                                 onPressed: () {
-                                  context.go('/chat/${appointment.id}');
+                                  context.go(
+                                      '/chat/${appointment.patientId}'); // ✅ CORRECT
                                 },
                                 icon: const Icon(Icons.chat),
                                 label: const Text('Chat'),
@@ -619,12 +669,12 @@ class AppointmentDetailsScreen extends ConsumerWidget {
                           isDoctor &&
                           appointment.status == 'completed')
                         CustomButton(
-                          text: 'Upload Prescription',
+                          text: 'Write Prescription',
                           onPressed: () {
-                            context.go(
-                                '/records/upload?appointmentId=${appointment.id}');
+                            context
+                                .go('/prescriptions/create/${appointment.id}');
                           },
-                          icon: Icons.upload_file,
+                          icon: Icons.edit_document,
                         ),
                     ],
                   ),
@@ -708,7 +758,6 @@ class AppointmentDetailsScreen extends ConsumerWidget {
                     title: const Text('Add to Calendar'),
                     onTap: () {
                       Navigator.pop(context);
-                      // Add calendar integration here
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
                           content: Text('Added to calendar'),
@@ -721,10 +770,7 @@ class AppointmentDetailsScreen extends ConsumerWidget {
                     leading: const Icon(Icons.chat, color: Colors.green),
                     title: const Text('Start Chat'),
                     onTap: () async {
-                      // Close the bottom sheet
                       Navigator.pop(context);
-
-                      // Ensure we have the current user and role
                       final authState = ref.read(authProvider);
                       final currentUser = authState.user;
                       if (currentUser == null) {
@@ -734,40 +780,32 @@ class AppointmentDetailsScreen extends ConsumerWidget {
                         );
                         return;
                       }
-
                       final isDoctor = currentUser.role == 'doctor';
-
-                      // Load chat rooms so we don't create duplicates
-                      await ref
+                      final otherUserId = isDoctor
+                          ? appointment.patientId
+                          : appointment.doctorId;
+                      final ok = await ref
                           .read(chatProvider.notifier)
-                          .getChatRooms(currentUser.id, isDoctor);
-
-                      // Create or reuse a chat room for this patient-doctor pair
-                      final chatRoomId = await ref
-                          .read(chatProvider.notifier)
-                          .createChatRoom(
-                              appointment.patientId, appointment.doctorId);
-
-                      if (chatRoomId != null) {
-                        context.go('/chat/$chatRoomId');
-                      } else {
+                          .send(currentUser.id!, otherUserId!, 'Hello');
+                      if (!ok) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
-                              content: Text(
-                                  'Unable to open chat for this appointment')),
+                            content:
+                                Text('Unable to start chat. Please try again.'),
+                          ),
                         );
                       }
+                      context.go('/chat/$otherUserId');
                     },
                   ),
                 if (isDoctor && appointment.status == 'completed')
                   ListTile(
                     leading:
-                        const Icon(Icons.upload_file, color: Colors.purple),
-                    title: const Text('Upload Prescription'),
+                        const Icon(Icons.edit_document, color: Colors.green),
+                    title: const Text('Write Prescription'),
                     onTap: () {
                       Navigator.pop(context);
-                      context.go(
-                          '/records/upload?appointmentId=${appointment.id}');
+                      context.go('/prescriptions/create/${appointment.id}');
                     },
                   ),
                 if (!isDoctor && appointment.status == 'completed')
@@ -822,5 +860,23 @@ class AppointmentDetailsScreen extends ConsumerWidget {
         );
       },
     );
+  }
+
+  // ✅ Fetch user name from Supabase
+  Future<String?> _fetchUserName(WidgetRef ref, String userId) async {
+    try {
+      final client = Supabase.instance.client;
+      final response = await client
+          .from('users')
+          .select('name')
+          .eq('id', userId)
+          .maybeSingle();
+
+      if (response == null) return null;
+      return response['name'] as String?;
+    } catch (e) {
+      debugPrint('Error fetching user name: $e');
+      return null;
+    }
   }
 }
