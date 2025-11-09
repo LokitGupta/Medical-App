@@ -55,6 +55,44 @@ class AppointmentNotifier extends StateNotifier<AppointmentState> {
     }
   }
 
+  // Check if doctor is available at specific time
+  Future<bool> isDoctorAvailable(String doctorId, DateTime startTime, DateTime endTime) async {
+    try {
+      final appointments = state.appointments.where((a) => 
+        a.doctorId == doctorId && a.status == 'accepted'
+      );
+      
+      // Check for overlapping appointments
+      final hasConflict = appointments.any((appointment) {
+        return startTime.isBefore(appointment.endTime) && 
+               endTime.isAfter(appointment.startTime);
+      });
+      
+      return !hasConflict;
+    } catch (e) {
+      print('Error checking doctor availability: $e');
+      return false;
+    }
+  }
+
+  // Fetch doctor availability for a specific date range
+  Future<List<Map<String, dynamic>>> getDoctorAvailability(
+    String doctorId, 
+    DateTime startDate, 
+    DateTime endDate
+  ) async {
+    try {
+      return await _supabaseService.getDoctorAcceptedAppointments(
+        doctorId: doctorId,
+        startDate: startDate,
+        endDate: endDate,
+      );
+    } catch (e) {
+      print('Error fetching doctor availability: $e');
+      return [];
+    }
+  }
+
   // Create a new appointment
   Future<bool> createAppointment(AppointmentModel appointment) async {
     state = state.copyWith(isLoading: true, error: null);
@@ -71,7 +109,18 @@ class AppointmentNotifier extends StateNotifier<AppointmentState> {
       state = state.copyWith(appointments: updatedList, isLoading: false);
       return true;
     } catch (e) {
-      state = state.copyWith(error: e.toString(), isLoading: false);
+      String errorMessage = e.toString();
+      
+      // Handle specific Supabase RLS policy violations
+      if (errorMessage.contains('violates row-level security policy')) {
+        if (errorMessage.contains('patient-can-insert-appointments')) {
+          errorMessage = 'This time slot is no longer available. The doctor may have another appointment scheduled. Please choose a different time.';
+        } else {
+          errorMessage = 'You are not authorized to book this appointment. Please ensure you are logged in and try again.';
+        }
+      }
+      
+      state = state.copyWith(error: errorMessage, isLoading: false);
       return false;
     }
   }

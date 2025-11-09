@@ -361,6 +361,29 @@ class SupabaseService {
     }
   }
 
+  // Get doctor's accepted appointments for a specific date range
+  Future<List<Map<String, dynamic>>> getDoctorAcceptedAppointments({
+    required String doctorId,
+    required DateTime startDate,
+    required DateTime endDate,
+  }) async {
+    try {
+      final response = await _client
+          .from('appointments')
+          .select('id, start_time, end_time, status')
+          .eq('doctor_id', doctorId)
+          .eq('status', 'accepted')
+          .gte('start_time', startDate.toIso8601String())
+          .lte('end_time', endDate.toIso8601String())
+          .order('start_time', ascending: true);
+
+      return List<Map<String, dynamic>>.from(response);
+    } catch (e) {
+      print('Error fetching doctor accepted appointments: $e');
+      return [];
+    }
+  }
+
 // Get patient prescriptions
   Future<List<Map<String, dynamic>>> getPatientPrescriptions(
     String patientId,

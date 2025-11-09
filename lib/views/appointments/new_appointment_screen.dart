@@ -191,27 +191,24 @@ class _NewAppointmentScreenState extends ConsumerState<NewAppointmentScreen> {
 
       final endTime = startTime.add(const Duration(minutes: 30));
 
-      // ✅ NEW: Check if doctor already has an accepted appointment during this time
-      final appointmentState = ref.read(appointmentProvider);
-      final existingAppointments = appointmentState.appointments.where((a) =>
-          a.doctorId == _selectedDoctor!['id'] && a.status == 'accepted');
+      // ✅ Enhanced: Check if doctor is available at this time
+      final isAvailable = await ref.read(appointmentProvider.notifier)
+          .isDoctorAvailable(_selectedDoctor!['id'], startTime, endTime);
 
-      final hasConflict = existingAppointments.any((a) {
-        final bool overlap =
-            startTime.isBefore(a.endTime) && endTime.isAfter(a.startTime);
-        return overlap;
-      });
-
-      if (hasConflict) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-                'The selected doctor already has an appointment at this time. Please choose another slot.'),
-          ),
-        );
+      if (!isAvailable) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                  'This time slot is no longer available. The doctor has another appointment scheduled. Please choose a different time.'),
+              backgroundColor: Colors.orange,
+              duration: Duration(seconds: 4),
+            ),
+          );
+        }
         return;
       }
-      // ✅ END NEW CHECK
+      // ✅ END ENHANCED CHECK
 
       final appointment = AppointmentModel(
         patientId: user.id,
