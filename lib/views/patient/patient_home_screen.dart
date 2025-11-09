@@ -81,14 +81,14 @@ class PatientHomeScreen extends ConsumerWidget {
                 context.go('/appointments');
               },
             ),
-            _buildDrawerItem(
-              icon: Icons.description,
-              title: 'Medical Records',
-              onTap: () {
-                Navigator.pop(context);
-                context.go('/records');
-              },
-            ),
+            // _buildDrawerItem(
+            //   icon: Icons.description,
+            //   title: 'Medical Records',
+            //   onTap: () {
+            //     Navigator.pop(context);
+            //     context.go('/records');
+            //   },
+            // ),
             _buildDrawerItem(
               icon: Icons.medication,
               title: 'Medications',
@@ -105,31 +105,31 @@ class PatientHomeScreen extends ConsumerWidget {
                 context.go('/chats');
               },
             ),
-            const Divider(),
-            _buildDrawerItem(
-              icon: Icons.payment,
-              title: 'Payments',
-              onTap: () {
-                Navigator.pop(context);
-                context.go('/payment-history');
-              },
-            ),
-            _buildDrawerItem(
-              icon: Icons.credit_card,
-              title: 'Payment Methods',
-              onTap: () {
-                Navigator.pop(context);
-                context.go('/payment-methods');
-              },
-            ),
-            _buildDrawerItem(
-              icon: Icons.health_and_safety,
-              title: 'Insurance',
-              onTap: () {
-                Navigator.pop(context);
-                context.go('/insurance-management');
-              },
-            ),
+            // const Divider(),
+            // _buildDrawerItem(
+            //   icon: Icons.payment,
+            //   title: 'Payments',
+            //   onTap: () {
+            //     Navigator.pop(context);
+            //     context.go('/payment-history');
+            //   },
+            // ),
+            // _buildDrawerItem(
+            //   icon: Icons.credit_card,
+            //   title: 'Payment Methods',
+            //   onTap: () {
+            //     Navigator.pop(context);
+            //     context.go('/payment-methods');
+            //   },
+            // ),
+            // _buildDrawerItem(
+            //   icon: Icons.health_and_safety,
+            //   title: 'Insurance',
+            //   onTap: () {
+            //     Navigator.pop(context);
+            //     context.go('/insurance-management');
+            //   },
+            // ),
             ListTile(
               leading: const Icon(Icons.smart_toy, color: Colors.green),
               title: const Text('CareBridge Assistant'),

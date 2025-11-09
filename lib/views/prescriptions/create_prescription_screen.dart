@@ -157,13 +157,7 @@ class _CreatePrescriptionScreenState
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Patient Name at Top
-                    Text(
-                      _appointment!.patientName ?? 'Patient',
-                      style: const TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                    Text('Patient'),
 
                     const SizedBox(height: 24),
 

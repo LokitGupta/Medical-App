@@ -582,24 +582,24 @@ class AppointmentDetailsScreen extends ConsumerWidget {
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: ElevatedButton.icon(
-                                onPressed: () {
-                                  context.go('/video/${appointment.id}');
-                                },
-                                icon: const Icon(Icons.videocam),
-                                label: const Text('Video Call'),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.blue,
-                                  padding:
-                                      const EdgeInsets.symmetric(vertical: 12),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                ),
-                              ),
-                            ),
+                            // const SizedBox(width: 16),
+                            // Expanded(
+                            //   child: ElevatedButton.icon(
+                            //     onPressed: () {
+                            //       context.go('/video/${appointment.id}');
+                            //     },
+                            //     icon: const Icon(Icons.videocam),
+                            //     label: const Text('Video Call'),
+                            //     style: ElevatedButton.styleFrom(
+                            //       backgroundColor: Colors.blue,
+                            //       padding:
+                            //           const EdgeInsets.symmetric(vertical: 12),
+                            //       shape: RoundedRectangleBorder(
+                            //         borderRadius: BorderRadius.circular(8),
+                            //       ),
+                            //     ),
+                            //   ),
+                            // ),
                           ],
                         ),
 

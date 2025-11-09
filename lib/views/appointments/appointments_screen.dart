@@ -269,7 +269,7 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen>
                       children: [
                         Text(
                           isDoctor
-                              ? 'Patient: ${appointment.patientName ?? 'Patient'}'
+                              ? 'Patient'
                               : 'Dr. ${appointment.doctorName ?? 'Doctor'}',
                           style: const TextStyle(
                             fontSize: 16,
@@ -445,20 +445,20 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen>
                         ),
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    ElevatedButton.icon(
-                      onPressed: () {
-                        context.go('/video/${appointment.id}');
-                      },
-                      icon: const Icon(Icons.videocam),
-                      label: const Text('Video'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                    ),
+                    // const SizedBox(width: 12),
+                    // ElevatedButton.icon(
+                    //   onPressed: () {
+                    //     context.go('/video/${appointment.id}');
+                    //   },
+                    //   icon: const Icon(Icons.videocam),
+                    //   label: const Text('Video'),
+                    //   style: ElevatedButton.styleFrom(
+                    //     backgroundColor: Colors.blue,
+                    //     shape: RoundedRectangleBorder(
+                    //       borderRadius: BorderRadius.circular(8),
+                    //     ),
+                    //   ),
+                    // ),
                   ],
                 ),
               if (isPast && !isDoctor)
