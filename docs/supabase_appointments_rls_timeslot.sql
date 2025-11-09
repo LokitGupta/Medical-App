@@ -1,4 +1,4 @@
--- Appointments Table RLS Policies with Double-Booking Prevention (CORRECTED and REFINED VERSION)
+-- Appointments Table RLS Policies with Time-Slot Double-Booking Prevention
 
 -- Enable Row Level Security on appointments table
 ALTER TABLE appointments ENABLE ROW LEVEL SECURITY;
@@ -10,43 +10,52 @@ DROP POLICY IF EXISTS "patient-can-insert-appointments" ON appointments;
 DROP POLICY IF EXISTS "doctor-can-update-appointment-status" ON appointments;
 DROP POLICY IF EXISTS "patient-can-cancel-own-appointments" ON appointments;
 DROP POLICY IF EXISTS "patient-can-delete-pending-appointments" ON appointments;
-DROP FUNCTION IF EXISTS is_doctor_available_on_date(UUID, DATE);
-DROP FUNCTION IF EXISTS has_patient_appointment_on_date(UUID, DATE);
-
+DROP FUNCTION IF EXISTS is_doctor_available_at_time(UUID, TIMESTAMPTZ);
+DROP FUNCTION IF EXISTS has_patient_overlapping_appointment(UUID, TIMESTAMPTZ);
 
 -- =========================================================
--- Function: Check if doctor is available on specific date
+-- Function: Check if doctor is available at a specific time slot
+-- Assumes a fixed 30-minute duration for appointments
 -- =========================================================
-CREATE OR REPLACE FUNCTION is_doctor_available_on_date(
+CREATE OR REPLACE FUNCTION is_doctor_available_at_time(
   p_doctor_id UUID,
-  p_appointment_date DATE
+  p_appointment_timestamp TIMESTAMPTZ
 ) RETURNS BOOLEAN AS $$
+DECLARE
+  appointment_duration INTERVAL := '30 minutes';
 BEGIN
   RETURN NOT EXISTS (
     SELECT 1 FROM public.appointments a
     WHERE a.doctor_id = p_doctor_id
-      AND a.status = 'accepted'
-      AND DATE(a.appointment_date) = p_appointment_date
+      AND LOWER(a.status) IN ('accepted', 'pending')
+      -- Check for overlapping time slots
+      AND a.appointment_date < (p_appointment_timestamp + appointment_duration)
+      AND p_appointment_timestamp < (a.appointment_date + appointment_duration)
   );
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 -- =========================================================
--- Function: Check if patient already has appointment on date
+-- Function: Check if patient already has an overlapping appointment
+-- Assumes a fixed 30-minute duration for appointments
 -- =========================================================
-CREATE OR REPLACE FUNCTION has_patient_appointment_on_date(
+CREATE OR REPLACE FUNCTION has_patient_overlapping_appointment(
   p_patient_id UUID,
-  p_appointment_date DATE
+  p_appointment_timestamp TIMESTAMPTZ
 ) RETURNS BOOLEAN AS $$
+DECLARE
+  appointment_duration INTERVAL := '30 minutes';
 BEGIN
   RETURN EXISTS (
     SELECT 1 FROM public.appointments a
     WHERE a.patient_id = p_patient_id
-      AND a.status IN ('accepted', 'pending')
-      AND DATE(a.appointment_date) = p_appointment_date
+      AND LOWER(a.status) IN ('accepted', 'pending')
+      -- Check for overlapping time slots
+      AND a.appointment_date < (p_appointment_timestamp + appointment_duration)
+      AND p_appointment_timestamp < (a.appointment_date + appointment_duration)
   );
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 -- =========================================================
 -- Policies
@@ -66,15 +75,15 @@ FOR SELECT
 TO authenticated
 USING (doctor_id = auth.uid());
 
--- 3. Allow patients to insert new appointments (with double-booking check)
+-- 3. Allow patients to insert new appointments (with time-slot double-booking check)
 CREATE POLICY "patient-can-insert-appointments"
 ON appointments
 FOR INSERT
 TO authenticated
 WITH CHECK (
   patient_id = auth.uid() AND
-  is_doctor_available_on_date(NEW.doctor_id, DATE(NEW.appointment_date)) AND
-  NOT has_patient_appointment_on_date(NEW.patient_id, DATE(NEW.appointment_date))
+  is_doctor_available_at_time(doctor_id, appointment_date) AND
+  NOT has_patient_overlapping_appointment(patient_id, appointment_date)
 );
 
 -- 4. Allow doctors to update appointment status only
@@ -84,11 +93,7 @@ FOR UPDATE
 TO authenticated
 USING (doctor_id = auth.uid())
 WITH CHECK (
-  doctor_id = auth.uid() AND
-  -- Only allow status changes (no change in date or participants)
-  appointment_date = OLD.appointment_date AND
-  doctor_id = OLD.doctor_id AND
-  patient_id = OLD.patient_id
+  doctor_id = auth.uid()
 );
 
 -- 5. Allow patients to cancel their own pending appointments
@@ -98,15 +103,11 @@ FOR UPDATE
 TO authenticated
 USING (
   patient_id = auth.uid() AND
-  status = 'pending'
+  LOWER(status) = 'pending'
 )
 WITH CHECK (
   patient_id = auth.uid() AND
-  status = 'cancelled' AND
-  -- Ensure other details are not changed
-  appointment_date = OLD.appointment_date AND
-  doctor_id = OLD.doctor_id AND
-  patient_id = OLD.patient_id
+  LOWER(status) = 'cancelled'
 );
 
 -- 6. Allow patients to delete their own pending appointments
@@ -116,7 +117,7 @@ FOR DELETE
 TO authenticated
 USING (
   patient_id = auth.uid() AND
-  status = 'pending'
+  LOWER(status) = 'pending'
 );
 
 -- =========================================================
@@ -127,9 +128,14 @@ CREATE INDEX IF NOT EXISTS idx_appointments_patient_date ON appointments(patient
 CREATE INDEX IF NOT EXISTS idx_appointments_status ON appointments(status);
 CREATE INDEX IF NOT EXISTS idx_appointments_doctor_status ON appointments(doctor_id, status);
 
+-- Prevent exact same-time double bookings at the database layer
+CREATE UNIQUE INDEX IF NOT EXISTS uniq_appointments_doctor_timeslot_active
+ON appointments(doctor_id, appointment_date)
+WHERE LOWER(status) IN ('accepted','pending');
+
 -- =========================================================
 -- Notes:
--- 1. Columns assumed: id (UUID), patient_id (UUID), doctor_id (UUID), appointment_date (TIMESTAMP), status (TEXT)
--- 2. Double-booking prevention works per-day
--- 3. For time-slot precision, extend the logic to include start_time/end_time columns
+-- 1. This policy assumes a fixed 30-minute appointment duration.
+--    If your appointment durations vary, you will need to add an 'end_time' or 'duration' column to the table.
+-- 2. Columns assumed: id (UUID), patient_id (UUID), doctor_id (UUID), appointment_date (TIMESTAMPTZ), status (TEXT)
 -- =========================================================
