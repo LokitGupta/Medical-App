@@ -172,7 +172,6 @@ class _NewAppointmentScreenState extends ConsumerState<NewAppointmentScreen> {
         return;
       }
 
-      // Combine date and time
       final startTime = DateTime(
         _selectedDate!.year,
         _selectedDate!.month,
@@ -181,7 +180,6 @@ class _NewAppointmentScreenState extends ConsumerState<NewAppointmentScreen> {
         _selectedTime!.minute,
       );
 
-      // Block booking in the past
       if (!startTime.isAfter(DateTime.now())) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -191,8 +189,29 @@ class _NewAppointmentScreenState extends ConsumerState<NewAppointmentScreen> {
         return;
       }
 
-      // End time (30 minutes after start)
       final endTime = startTime.add(const Duration(minutes: 30));
+
+      // ✅ NEW: Check if doctor already has an accepted appointment during this time
+      final appointmentState = ref.read(appointmentProvider);
+      final existingAppointments = appointmentState.appointments.where((a) =>
+          a.doctorId == _selectedDoctor!['id'] && a.status == 'accepted');
+
+      final hasConflict = existingAppointments.any((a) {
+        final bool overlap =
+            startTime.isBefore(a.endTime) && endTime.isAfter(a.startTime);
+        return overlap;
+      });
+
+      if (hasConflict) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+                'The selected doctor already has an appointment at this time. Please choose another slot.'),
+          ),
+        );
+        return;
+      }
+      // ✅ END NEW CHECK
 
       final appointment = AppointmentModel(
         patientId: user.id,

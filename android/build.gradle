@@ -1,0 +1,58 @@
+// ===========================================================
+//  Global Gradle configuration for Flutter project (Groovy)
+//  Fixes outdated plugin buildTools (25.0.1) issues
+// ===========================================================
+
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath "com.android.tools.build:gradle:8.4.2"
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.24"
+    }
+}
+
+// ===========================================================
+//  Force all subprojects (plugins) to use latest SDK versions
+// ===========================================================
+subprojects {
+    afterEvaluate { project ->
+        if (project.hasProperty("android")) {
+            project.android {
+                compileSdkVersion 36
+                buildToolsVersion "36.0.0"
+                defaultConfig {
+                    targetSdkVersion 36
+                    if (minSdkVersion.apiLevel < 21) {
+                        minSdkVersion 21
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ===========================================================
+//  Default repository and build structure settings
+// ===========================================================
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+// ===========================================================
+//  Relocate Gradle build directory (Groovy-compatible)
+// ===========================================================
+rootProject.buildDir = "../../build"
+subprojects {
+    project.buildDir = "${rootProject.buildDir}/${project.name}"
+    project.evaluationDependsOn(":app")
+}
+
+tasks.register("clean", Delete) {
+    delete rootProject.buildDir
+}

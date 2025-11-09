@@ -1,57 +1,103 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:medical_app/models/chat_model.dart';
-import 'package:medical_app/services/supabase_service.dart';
+import 'package:medical_app/models/conversation.dart';
+import 'package:medical_app/models/message.dart';
+import 'package:medical_app/services/chat_service.dart';
 
 class ChatState {
   final bool isLoading;
-  final List<ChatRoomModel> chatRooms;
+  final bool isSending;
+  final List<Conversation> conversations;
+  final List<Message> messages;
+  final String? activeOtherUserId;
 
-  ChatState({this.isLoading = false, this.chatRooms = const []});
+  ChatState({
+    this.isLoading = false,
+    this.isSending = false,
+    this.conversations = const [],
+    this.messages = const [],
+    this.activeOtherUserId,
+  });
 
-  get messages => null;
-
-  get isSending => null;
-
-  ChatState copyWith({bool? isLoading, List<ChatRoomModel>? chatRooms}) {
+  ChatState copyWith({
+    bool? isLoading,
+    bool? isSending,
+    List<Conversation>? conversations,
+    List<Message>? messages,
+    String? activeOtherUserId,
+  }) {
     return ChatState(
       isLoading: isLoading ?? this.isLoading,
-      chatRooms: chatRooms ?? this.chatRooms,
+      isSending: isSending ?? this.isSending,
+      conversations: conversations ?? this.conversations,
+      messages: messages ?? this.messages,
+      activeOtherUserId: activeOtherUserId ?? this.activeOtherUserId,
     );
   }
 }
 
 class ChatNotifier extends StateNotifier<ChatState> {
-  ChatNotifier() : super(ChatState());
+  final ChatService _chatService;
+  ChatNotifier(this._chatService) : super(ChatState());
 
-  Future<void> getChatRooms(String userId, bool isDoctor) async {
+  Future<void> loadConversations(String userId) async {
     state = state.copyWith(isLoading: true);
-
     try {
-      final rooms = await ChatService.getChatRooms(userId, isDoctor);
-      state = state.copyWith(chatRooms: rooms);
-    } catch (e) {
-      state = state.copyWith(chatRooms: []);
+      final convos = await _chatService.getConversations(userId);
+      state = state.copyWith(conversations: convos);
+    } catch (_) {
+      state = state.copyWith(conversations: []);
     } finally {
       state = state.copyWith(isLoading: false);
     }
   }
 
-  void subscribeToMessages(String s) {}
+  Future<void> loadMessages(String userId, String otherUserId) async {
+    state = state.copyWith(isLoading: true, activeOtherUserId: otherUserId);
+    try {
+      final msgs = await _chatService.getMessagesWith(userId, otherUserId);
+      state = state.copyWith(messages: msgs);
+    } catch (_) {
+      state = state.copyWith(messages: []);
+    } finally {
+      state = state.copyWith(isLoading: false);
+    }
+  }
 
-  void unsubscribeFromMessages(String s) {}
+  void subscribe(String userId, String otherUserId) {
+    state = state.copyWith(activeOtherUserId: otherUserId);
+    _chatService.subscribeToConversation(
+      userId: userId,
+      otherUserId: otherUserId,
+      onMessage: (m) {
+        // Append realtime message
+        final updated = [...state.messages, m];
+        state = state.copyWith(messages: updated);
+      },
+    );
+  }
 
-  Future<void> getMessages(String s) async {}
+  void unsubscribe() {
+    _chatService.unsubscribe();
+  }
 
-  Future sendMessage(ChatModel chatMessage) async {}
-
-  Future createChatRoom(String patientId, String doctorId) async {}
+  Future<bool> send(String senderId, String receiverId, String text) async {
+    state = state.copyWith(isSending: true);
+    try {
+      final saved = await _chatService.sendMessage(
+        senderId: senderId,
+        receiverId: receiverId,
+        text: text,
+      );
+      state = state.copyWith(messages: [...state.messages, saved]);
+      return true;
+    } catch (_) {
+      return false;
+    } finally {
+      state = state.copyWith(isSending: false);
+    }
+  }
 }
 
 final chatProvider = StateNotifierProvider<ChatNotifier, ChatState>((ref) {
-  return ChatNotifier();
-});
-
-// Local provider for SupabaseService used by ChatNotifier
-final supabaseServiceProvider = Provider<SupabaseService>((ref) {
-  return SupabaseService();
+  return ChatNotifier(ChatService());
 });

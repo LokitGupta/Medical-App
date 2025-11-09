@@ -231,7 +231,7 @@ class _DoctorHomeScreenState extends ConsumerState<DoctorHomeScreen> {
                   'Write Prescription',
                   Icons.edit_document,
                   Colors.green,
-                  () => context.go('/records/upload'),
+                  () => context.go('/appointments'),
                   enabled: isApproved,
                 ),
                 _buildActionCard(
@@ -311,7 +311,7 @@ class _DoctorHomeScreenState extends ConsumerState<DoctorHomeScreen> {
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: isApproved ? () => context.go('/records/upload') : null,
+        onPressed: isApproved ? () => context.go('/appointments') : null,
         child: const Icon(Icons.edit_document),
         tooltip: isApproved ? 'Create Prescription' : 'Awaiting Verification',
       ),

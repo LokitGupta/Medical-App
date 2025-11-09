@@ -1,19 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:medical_app/models/chat_model.dart';
-import 'package:medical_app/models/chat_room_model.dart';
+import 'package:medical_app/models/message.dart';
 import 'package:medical_app/providers/auth_provider.dart';
 import 'package:medical_app/providers/chat_provider.dart';
-import 'package:medical_app/screens/video_call/video_call_screen.dart';
 import 'package:medical_app/utils/app_colors.dart';
-import 'package:medical_app/widgets/custom_app_bar.dart';
-import 'package:medical_app/widgets/custom_button.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
-  final ChatRoomModel chatRoom;
+  final String otherUserId;
 
-  const ChatScreen({Key? key, required this.chatRoom}) : super(key: key);
+  const ChatScreen({Key? key, required this.otherUserId}) : super(key: key);
 
   @override
   ConsumerState<ChatScreen> createState() => _ChatScreenState();
@@ -22,53 +18,32 @@ class ChatScreen extends ConsumerStatefulWidget {
 class _ChatScreenState extends ConsumerState<ChatScreen> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  String? _currentUserId;
 
   @override
   void initState() {
     super.initState();
-    _loadMessages();
-    _loadChatRoomData();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final authState = ref.read(authProvider);
+      _currentUserId = authState.user?.id;
+      if (_currentUserId == null) return;
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(chatProvider.notifier).subscribeToMessages(widget.chatRoom.id!);
+      await ref
+          .read(chatProvider.notifier)
+          .loadMessages(_currentUserId!, widget.otherUserId);
+      ref
+          .read(chatProvider.notifier)
+          .subscribe(_currentUserId!, widget.otherUserId);
+      _scrollToBottom();
     });
-  }
-
-  Future<void> _loadChatRoomData() async {
-    // If we have a temporary room (patientId is 'temp_patient'), 
-    // try to find the real room data from the chat rooms list
-    if (widget.chatRoom.patientId == 'temp_patient' || 
-        widget.chatRoom.doctorId == 'temp_doctor') {
-      final chatState = ref.read(chatProvider);
-      final realRoom = chatState.chatRooms.firstWhere(
-        (room) => room.id == widget.chatRoom.id,
-        orElse: () => widget.chatRoom,
-      );
-      
-      // If we found the real room, update the UI
-      if (realRoom.patientId != 'temp_patient' && realRoom.patientId.isNotEmpty) {
-        setState(() {
-          // The room data will be updated through the provider
-        });
-      }
-    }
   }
 
   @override
   void dispose() {
     _messageController.dispose();
     _scrollController.dispose();
-    ref
-        .read(chatProvider.notifier)
-        .unsubscribeFromMessages(widget.chatRoom.id!);
+    ref.read(chatProvider.notifier).unsubscribe();
     super.dispose();
-  }
-
-  Future<void> _loadMessages() async {
-    if (widget.chatRoom.id != null) {
-      await ref.read(chatProvider.notifier).getMessages(widget.chatRoom.id!);
-      _scrollToBottom();
-    }
   }
 
   void _scrollToBottom() {
@@ -84,66 +59,48 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   Future<void> _sendMessage() async {
-    final messageText = _messageController.text.trim();
-    if (messageText.isEmpty) return;
+    final text = _messageController.text.trim();
+    if (text.isEmpty) return;
 
     final authState = ref.read(authProvider);
-    final currentUserId = authState.user?.id;
-    if (currentUserId == null || widget.chatRoom.id == null) return;
-
-    final isDoctor = authState.user?.role == 'doctor';
-    final receiverId =
-        isDoctor ? widget.chatRoom.patientId : widget.chatRoom.doctorId;
-
-    final chatMessage = ChatModel(
-      chatRoomId: widget.chatRoom.id!,
-      senderId: currentUserId,
-      receiverId: receiverId,
-      message: messageText,
-      timestamp: DateTime.now(),
-      appointmentId: null,
-    );
+    final senderId = authState.user?.id;
+    if (senderId == null) return;
 
     _messageController.clear();
-
-    final success =
-        await ref.read(chatProvider.notifier).sendMessage(chatMessage);
-    if (success) _scrollToBottom();
+    final ok = await ref
+        .read(chatProvider.notifier)
+        .send(senderId, widget.otherUserId, text);
+    if (ok) _scrollToBottom();
   }
 
   @override
   Widget build(BuildContext context) {
     final chatState = ref.watch(chatProvider);
     final authState = ref.watch(authProvider);
-    final isDoctor = authState.user?.role == 'doctor';
-    final chatName =
-        isDoctor ? widget.chatRoom.patientName : widget.chatRoom.doctorName;
+    final currentUserId = authState.user?.id;
+
+    final title = () {
+      final match = chatState.conversations.firstWhere(
+        (c) => c.otherUserId == widget.otherUserId,
+        orElse: () =>
+            // Fallback conversation when name is unknown
+            // This keeps UI tidy while data loads.
+            // otherUserName will be null here.
+            // ignore: prefer_const_constructors
+            
+            // We won't construct Conversation to avoid importing it; show ID.
+            null as dynamic,
+      );
+      try {
+        return match.otherUserName ?? 'Chat';
+      } catch (_) {
+        return 'Chat';
+      }
+    }();
 
     return Scaffold(
-      appBar: CustomAppBar(
-        title: chatName ?? 'Chat',
-        showBackButton: true,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.video_call),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => VideoCallScreen(
-                    doctorName: isDoctor
-                        ? widget.chatRoom.patientName ?? 'Patient'
-                        : widget.chatRoom.doctorName ?? 'Doctor',
-                    doctorAvatar: isDoctor
-                        ? widget.chatRoom.patientAvatar
-                        : widget.chatRoom.doctorAvatar,
-                    appointmentId: widget.chatRoom.id!,
-                  ),
-                ),
-              );
-            },
-          ),
-        ],
+      appBar: AppBar(
+        title: Text(title),
       ),
       body: Column(
         children: [
@@ -153,7 +110,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 : chatState.messages.isEmpty
                     ? _buildEmptyChat()
                     : _buildChatMessages(chatState.messages,
-                        currentUserId: authState.user?.id),
+                        currentUserId: currentUserId),
           ),
           _buildMessageInput(),
         ],
@@ -187,7 +144,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     );
   }
 
-  Widget _buildChatMessages(List<ChatModel> messages,
+  Widget _buildChatMessages(List<Message> messages,
       {required String? currentUserId}) {
     return ListView.builder(
       controller: _scrollController,
@@ -232,7 +189,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     );
   }
 
-  Widget _buildMessageBubble(ChatModel message, bool isMe) {
+  Widget _buildMessageBubble(Message message, bool isMe) {
     return Align(
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
@@ -317,10 +274,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             height: 48,
             child: isSending
                 ? const CircularProgressIndicator()
-                : CustomButton(
+                : ElevatedButton(
                     onPressed: _sendMessage,
-                    child: const Icon(Icons.send, color: Colors.white),
-                    padding: EdgeInsets.zero,
+                    style: ElevatedButton.styleFrom(
+                      shape: const CircleBorder(),
+                      padding: EdgeInsets.zero,
+                    ),
+                    child: const Icon(Icons.send),
                   ),
           ),
         ],

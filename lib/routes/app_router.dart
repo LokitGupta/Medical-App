@@ -209,7 +209,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         name: 'chat-room',
         builder: (context, state) {
           final id = state.pathParameters['id'] ?? '';
-          return ChatRoomRoute(chatRoomId: id);
+          return ChatRoomRoute(otherUserId: id);
         },
       ),
       GoRoute(

@@ -73,15 +73,19 @@ class AppointmentModel {
       id: json['id'],
       patientId: json['patient_id'] ?? json['patientId'],
       doctorId: json['doctor_id'] ?? json['doctorId'],
-      patientName: (json['patient'] is Map)
-          ? json['patient']['name']
-          : json['patient_name'],
-      doctorName: (json['doctor'] is Map)
-          ? json['doctor']['name']
-          : json['doctor_name'],
-      doctorSpecialty: (json['doctor'] is Map)
-          ? json['doctor']['specialty']
-          : json['doctor_specialty'],
+      patientName: json['patient_name'] ??
+          (json['patient'] is Map
+              ? (json['patient']['name'] ?? 'Unknown')
+              : json['users'] is Map
+                  ? (json['users']['name'] ?? 'Unknown')
+                  : json['appointments_patient_id_fkey'] is Map
+                      ? (json['appointments_patient_id_fkey']['name'] ??
+                          'Unknown')
+                      : 'Unknown'),
+      doctorName: json['doctor_name'] ??
+          (json['doctor'] is Map ? json['doctor']['name'] : null),
+      doctorSpecialty: json['doctor_specialty'] ??
+          (json['doctor'] is Map ? json['doctor']['specialty'] : null),
       status: json['status'] ?? 'pending',
       startTime: start,
       endTime: end,
